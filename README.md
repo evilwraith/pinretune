@@ -1,10 +1,10 @@
-# PinResound - Uncovering the obscured
+# PinRetune - Uncovering the obscured
 A tool to assist with encryption, decryption, scrambling and unscrambling of all things PinSound.
 
 ## What is PinSound?
 If you are active in the pinball community you most likely already know. PinSound is a suite of electronics and hardware designed to enhance the pinball experience. This repository and tooling will focus on the sound cards specifically, which by the way are great products!
 
-### What is PinResound?
+### What is PinRetune?
 
 ## Pinsound commands
 
