@@ -36,7 +36,6 @@ rtttl <data>
 example: rtttl Addams Family :d=4, o=6, b=50 :32p, 32c#, 16f#, 32a#, 16f#, 32c#, 16c, 8g#, 32f#, 16f, 32g#, 16f, 32c#, 16a#5, 8f#
 ```
 
-
 ## Unknown commands
 `auto_mute 600`
 

@@ -3,7 +3,8 @@ use std::{collections::HashSet,fs::File,io::{Read, Write}};
 use xsalsa20poly1305::{AeadInPlace, KeyInit, XSalsa20Poly1305};
 
 // PinSound file encryption key (256bit)
-static PS_KEY: &[u8;32] = include_bytes!("extra/key.bin");
+// Note: Key is not stored in original PS binaries but generated on demand
+static PS_KEY: &[u8; 32] = include_bytes!("extra/key.bin");
 
 // PinSound file encryption nonce (192bit)
 static PS_NONCE: &[u8;24] =
@@ -28,7 +29,7 @@ impl PsConfig {
         self.version
     }
     /// Read the contents of a PinSound file into a vector of bytes and decrypt
-    /// 
+    ///
     /// # Arguments
     /// * `filename` - The name of the file to read
     pub fn load(mut self, filename: &str) -> Result<(), std::io::Error> {
@@ -40,20 +41,19 @@ impl PsConfig {
         cipher.decrypt_in_place(PS_NONCE.into(), b"", &mut data);
 
         let cfg_str = String::from_utf8_lossy(&data);
-        
-        for item in cfg_str.split('|') {
-            // String may be null terminated, so trim it
-            let item = item.trim_end_matches(char::from(0));
-            // Skip empty strings
-            if item.is_empty() { continue; };
-            println!("Config item: {}, '{}'", item.len(), item.trim());
-            self.elements.insert(item.to_string());
-        }
+        println!("{}", cfg_str);
+
+        let (cfg_str, ver) = match parse_config(&cfg_str) {
+            Err(error) => panic!("shit"),
+            Ok(result) => result,
+        };
+        println!("a-> '{:?}'\nb-> '{}'", ver, cfg_str);
+
         Ok(())
     }
 
     /// Write the contents of a vector of bytes to a PinSound file and encrypt
-    /// 
+    ///
     /// # Arguments
     /// * `filename` - The name of the file to write
     pub fn save(self, filename: &str, mut data: Vec<u8>) -> Result<(), std::io::Error> {

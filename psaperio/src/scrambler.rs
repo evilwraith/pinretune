@@ -1,16 +1,15 @@
-
+use super::bytes::Halves;
 use generic_array::GenericArray;
 use sha2::{Digest, Sha256};
-use super::bytes::Halves;
 
 /// PinSound ID static encryption seed (256bit)
 /// Although the seed is not a encryption key by itself, it is used, together with a
 /// appended dynamic part, to to derive lookup tables for use in ID scrambling.
-static PS_SEED: &[u8;32] = include_bytes!("extra/seed.bin");
+static PS_SEED: &[u8; 32] = include_bytes!("extra/seed.bin");
 
 /// initialise_seed - Initialise seed with soundpack "checksum" for ID scrambling  
-fn initialise_seed(checksum: &str) -> [u8;48] {
-    let mut seed: [u8;48] = [0;48];
+fn initialise_seed(checksum: &str) -> [u8; 48] {
+    let mut seed: [u8; 48] = [0; 48];
 
     let mut preseed: Vec<u8> = PS_SEED.to_vec();
     preseed.extend_from_slice(checksum.as_bytes());
@@ -29,8 +28,8 @@ fn initialise_seed(checksum: &str) -> [u8;48] {
 }
 
 /// mutate_seed - Mutate seed with its own hash and return a u32 for use in ID scrambling
-fn mutate_seed(seed: &mut [u8;48]) -> u32 {
-    let mut hash: [u8;32] = [0;32];
+fn mutate_seed(seed: &mut [u8; 48]) -> u32 {
+    let mut hash: [u8; 32] = [0; 32];
     let mut ga_hash = GenericArray::from_mut_slice(&mut hash[..]);
     let mut hasher = Sha256::new();
 
@@ -47,10 +46,10 @@ fn mutate_seed(seed: &mut [u8;48]) -> u32 {
     hash[0..4].iter().fold(0, |acc, &x| acc << 8 | x as u32)
 }
 
-/// generate_data - Return a `size` long lookup table used for ID scrambling 
-fn generate_data(seed: &mut [u8;48], size: usize) -> Vec<u8>{
+/// generate_data - Return a `size` long lookup table used for ID scrambling
+fn generate_data(seed: &mut [u8; 48], size: usize) -> Vec<u8> {
     let mut result: Vec<u8> = Vec::with_capacity(size);
-    let mut hbuf: [u8;32] = [0;32];
+    let mut hbuf: [u8; 32] = [0; 32];
     let mut ga_hbuf = GenericArray::from_mut_slice(&mut hbuf);
 
     let mut hasher = Sha256::new();
@@ -64,7 +63,7 @@ fn generate_data(seed: &mut [u8;48], size: usize) -> Vec<u8>{
         for i in 0..32 {
             seed[offset + i] ^= ga_hbuf[i];
         }
-        
+
         // In the original code this byte is taken from the first byte of the private sha256 state
         // field and will have endianess issues. This is slightly puzzling as the finalize call will
         // output the state in big endian so it would have made sense to use that for portability.
@@ -99,16 +98,18 @@ pub struct IdScrambler {
 
 impl IdScrambler {
     pub fn new(checksum: &str) -> Self {
-        IdScrambler { tbl: IdLookupTable::new(checksum)}
+        IdScrambler {
+            tbl: IdLookupTable::new(checksum),
+        }
     }
 
     pub fn scramble(&self, id: u32) -> u32 {
-        let mut upper  = id.hi().wrapping_add(self.tbl.offset1.lo());
+        let mut upper = id.hi().wrapping_add(self.tbl.offset1.lo());
         let mut lower = id.lo().wrapping_add(self.tbl.offset2.lo());
         let tbl1 = &self.tbl.lookup1;
         let tbl2 = &self.tbl.lookup2;
 
-        for round in 0..12 as u8{
+        for round in 0..12 as u8 {
             let ih: u8 = upper.hi();
             let il: u8 = upper.lo() ^ round;
             let bvar1 = tbl2[(tbl1[ih as usize] ^ il) as usize];
@@ -116,8 +117,9 @@ impl IdScrambler {
             let ih = tbl2[(tbl1[bvar2 as usize] ^ bvar1 ^ round) as usize].wrapping_sub(ih);
             let bvar3 = tbl1[ih as usize] ^ bvar2 ^ round;
             let uvar4 = (ih as u16) << 8 | tbl1[bvar2 as usize] as u16;
-            let uvar5: u16 = (((tbl2[(tbl1[bvar1 as usize] ^ ih) as usize] ^ bvar2) as u16) << 8) |
-                        (tbl2[((tbl2[bvar3 as usize].wrapping_add(ih)) ^ uvar4 as u8) as usize] ^ bvar1) as u16;
+            let uvar5: u16 = (((tbl2[(tbl1[bvar1 as usize] ^ ih) as usize] ^ bvar2) as u16) << 8)
+                | (tbl2[((tbl2[bvar3 as usize].wrapping_add(ih)) ^ uvar4 as u8) as usize] ^ bvar1)
+                    as u16;
             lower = lower.wrapping_add(uvar5);
 
             let ih = lower.hi();
@@ -127,16 +129,17 @@ impl IdScrambler {
             let ih = tbl1[(tbl2[bvar2 as usize] ^ bvar1 ^ round) as usize].wrapping_sub(ih);
             let bvar3 = tbl2[ih as usize] ^ bvar2 ^ round;
             let uvar4 = (ih as u16) << 8 | tbl2[bvar2 as usize] as u16;
-            let uvar5 = (((tbl1[(tbl2[bvar1 as usize] ^ ih) as usize] ^ bvar2) as u16) << 8) |
-                        (tbl1[(tbl1[bvar3 as usize].wrapping_add(ih) ^ uvar4 as u8) as usize] ^ bvar1) as u16;
+            let uvar5 = (((tbl1[(tbl2[bvar1 as usize] ^ ih) as usize] ^ bvar2) as u16) << 8)
+                | (tbl1[(tbl1[bvar3 as usize].wrapping_add(ih) ^ uvar4 as u8) as usize] ^ bvar1)
+                    as u16;
             upper = upper.wrapping_sub(uvar5);
-          };
-        
+        }
+
         (upper as u32) << 16 | lower as u32
     }
 
     pub fn unscramble(&self, id: u32) -> u32 {
-        let mut upper  = id.hi();
+        let mut upper = id.hi();
         let mut lower = id.lo();
         let tbl1 = &self.tbl.lookup1;
         let tbl2 = &self.tbl.lookup2;
@@ -149,8 +152,9 @@ impl IdScrambler {
             let ih = tbl1[(tbl2[bvar2 as usize] ^ bvar1 ^ round) as usize].wrapping_sub(ih);
             let bvar3 = tbl2[ih as usize] ^ bvar2 ^ round;
             let uvar4 = (ih as u16) << 8 | tbl2[bvar2 as usize] as u16;
-            let uvar5 = (((tbl1[(tbl2[bvar1 as usize] ^ ih) as usize] ^ bvar2) as u16) << 8) |
-                        (tbl1[(tbl1[bvar3 as usize].wrapping_add(ih) ^ uvar4 as u8) as usize] ^ bvar1) as u16;
+            let uvar5 = (((tbl1[(tbl2[bvar1 as usize] ^ ih) as usize] ^ bvar2) as u16) << 8)
+                | (tbl1[(tbl1[bvar3 as usize].wrapping_add(ih) ^ uvar4 as u8) as usize] ^ bvar1)
+                    as u16;
             upper = upper.wrapping_add(uvar5);
 
             let ih: u8 = upper.hi();
@@ -160,12 +164,13 @@ impl IdScrambler {
             let ih = tbl2[(tbl1[bvar2 as usize] ^ bvar1 ^ round) as usize].wrapping_sub(ih);
             let bvar3 = tbl1[ih as usize] ^ bvar2 ^ round;
             let uvar4 = (ih as u16) << 8 | tbl1[bvar2 as usize] as u16;
-            let uvar5: u16 = (((tbl2[(tbl1[bvar1 as usize] ^ ih) as usize] ^ bvar2) as u16) << 8) |
-                        (tbl2[((tbl2[bvar3 as usize].wrapping_add(ih)) ^ uvar4 as u8) as usize] ^ bvar1) as u16;
+            let uvar5: u16 = (((tbl2[(tbl1[bvar1 as usize] ^ ih) as usize] ^ bvar2) as u16) << 8)
+                | (tbl2[((tbl2[bvar3 as usize].wrapping_add(ih)) ^ uvar4 as u8) as usize] ^ bvar1)
+                    as u16;
             lower = lower.wrapping_sub(uvar5);
-          };
-        
-        upper  = upper.wrapping_sub(self.tbl.offset1.lo());
+        }
+
+        upper = upper.wrapping_sub(self.tbl.offset1.lo());
         lower = lower.wrapping_sub(self.tbl.offset2.lo());
         (upper as u32) << 16 | lower as u32
     }

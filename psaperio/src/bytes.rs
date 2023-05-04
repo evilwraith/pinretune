@@ -8,7 +8,6 @@ pub trait Halves {
     fn lo(&self) -> Self::Item;
 }
 
-
 impl Halves for u16 {
     type Item = u8;
 
@@ -32,7 +31,6 @@ impl Halves for u32 {
         *self as u16
     }
 }
-
 
 #[cfg(test)]
 mod tests {
