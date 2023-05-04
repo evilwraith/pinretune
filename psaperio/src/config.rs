@@ -1,5 +1,18 @@
-
-use std::{collections::HashSet,fs::File,io::{Read, Write}};
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, take_till1, take_until, take_while},
+    character::complete::{alphanumeric1, char, digit1, hex_digit1, multispace1, space1},
+    character::is_space,
+    combinator::{map_res, opt, recognize},
+    multi::{many0, separated_list1},
+    sequence::{pair, preceded, terminated},
+    IResult,
+};
+use std::{
+    collections::HashSet,
+    fs::File,
+    io::{Read, Write},
+};
 use xsalsa20poly1305::{AeadInPlace, KeyInit, XSalsa20Poly1305};
 
 // PinSound file encryption key (256bit)
@@ -7,9 +20,99 @@ use xsalsa20poly1305::{AeadInPlace, KeyInit, XSalsa20Poly1305};
 static PS_KEY: &[u8; 32] = include_bytes!("extra/key.bin");
 
 // PinSound file encryption nonce (192bit)
-static PS_NONCE: &[u8;24] =
-    &[0x4e,0x3e,0x68,0x72,0x10,0xa0,0xa3,0x27,0x5a,0x00,0xd2,0x5b,0x68,0xd3,0xf8,0xba,
-    0x00,0x43,0x33,0x95,0x90,0x9e,0xdb,0xf7];
+static PS_NONCE: &[u8; 24] = &[
+    0x4e, 0x3e, 0x68, 0x72, 0x10, 0xa0, 0xa3, 0x27, 0x5a, 0x00, 0xd2, 0x5b, 0x68, 0xd3, 0xf8, 0xba,
+    0x00, 0x43, 0x33, 0x95, 0x90, 0x9e, 0xdb, 0xf7,
+];
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Primitive {
+    APPVER(String),
+    CHECKSUM(String),
+    CHECKSUMS(Vec<String>),
+    CHECKSUMVER(u32),
+    CONFIGVER(u32),
+    DATETIME(u32),
+    DUCKING(Kind),
+    FALLBACK(String),
+    GAIN(Kind),
+    MAX(Kind),
+    RECORD(bool),
+    SOUND(Action),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Action {
+    DELAY(u32),
+    GAIN(u32),
+    SHAKER(u32),
+    STOP(u32),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Kind {
+    JINGLE(u32),
+    MUSIC(u32),
+    SFX(u32),
+    SINGLE(u32),
+    VOICE(u32),
+}
+
+fn parse_hex(input: &str) -> IResult<&str, &str> {
+    hex_digit1(input)
+}
+
+fn parse_alnum(input: &str) -> IResult<&str, &str> {
+    alphanumeric1(input)
+}
+
+fn parse_number(input: &str) -> IResult<&str, &str> {
+    digit1(input)
+}
+
+fn parse_sound(input: &str) -> IResult<&str, &str> {
+    let (rest, val) = parse_identifier(input).unwrap();
+    parse_number(rest)
+}
+
+fn parse_fallback(input: &str) -> IResult<&str, Primitive> {
+    match recognize(take_until("|"))(input) {
+        Ok((rest, val)) => Ok((rest, Primitive::FALLBACK(val.to_string()))),
+        Err(e) => Err(e),
+    }
+}
+
+fn parse_checksum(input: &str) -> IResult<&str, Primitive> {
+    match alphanumeric1(input) {
+        Ok((rest, val)) => Ok((rest, Primitive::CHECKSUM(val.to_string()))),
+        Err(e) => Err(e),
+    }
+}
+
+fn parse_identifier(input: &str) -> IResult<&str, &str> {
+    terminated(take_till1(char::is_whitespace), space1)(input)
+}
+
+fn parse_statement(input: &str) -> IResult<&str, Primitive> {
+    match parse_identifier(input) {
+        Ok((rest, val)) => {
+            let f = match val {
+                "checksum" => parse_checksum,
+                // "checksum_version" => parse_hex,
+                // "ducking" => parse_sound,
+                // "gain" => parse_sound,
+                // "max" => parse_sound,
+                _ => parse_fallback,
+            };
+            f(rest)
+        }
+        Err(e) => Err(e),
+    }
+}
+
+fn parse_config(input: &str) -> IResult<&str, Vec<Primitive>> {
+    separated_list1(tag("|"), parse_statement)(input)
+}
 
 pub struct PsConfig {
     elements: HashSet<String>,
@@ -62,5 +165,16 @@ impl PsConfig {
         let mut file = File::create(filename)?;
         file.write_all(&data)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn checksum() {
+        let t = parse_statement("checksum Test").unwrap();
+        assert_eq!(t, ("", "Test"));
     }
 }
