@@ -8,11 +8,18 @@ If you are active in the pinball community you most likely already know. PinSoun
 
 ## Pinsound commands
 
-### Checksums
+### Checksum
 The checksum "seed" used to scramble sound ids. Each pin has it's own unique checksum. Some pins have multiple, presumably to combat conversion tables.
 ```
-checksums <seed>
-example: checksums TheSoprOrig
+checksum <seed>
+example: checksum TheSoprOrig
+```
+
+### Checksums
+Defines the list of valid checksums for a specific pin.
+```
+checksums <name> ...
+example: checksums SomeChecksum AnotherChecksum
 ```
 
 ### Shaker presets
@@ -30,7 +37,7 @@ example: 120 stop 33
 ```
 
 ### RTTTL - Ring Tone Text Transfer Language
-Unknown usage. See Wikipedia for more on [RTTTL](https://en.wikipedia.org/wiki/Ring_Tone_Text_Transfer_Language)
+Defines the tune that is played by the shaker at boot. See Wikipedia for more on [RTTTL](https://en.wikipedia.org/wiki/Ring_Tone_Text_Transfer_Language)
 ```
 rtttl <data>
 example: rtttl Addams Family :d=4, o=6, b=50 :32p, 32c#, 16f#, 32a#, 16f#, 32c#, 16c, 8g#, 32f#, 16f, 32g#, 16f, 32c#, 16a#5, 8f#
