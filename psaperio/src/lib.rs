@@ -10,4 +10,5 @@
 
 mod bytes;
 pub mod config;
+pub mod filemgr;
 pub mod scrambler;

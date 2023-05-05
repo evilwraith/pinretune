@@ -1,26 +1,55 @@
-use psaperio::{config, scrambler::IdScrambler};
-use std::num::ParseIntError;
+use psaperio::{config, filemgr, scrambler::IdScrambler};
+use std::fs::read_dir;
 
-fn convert_id_str(checksum: &str, id: &str) -> Result<String, ParseIntError> {
-    // TODO: add error handling
+pub fn process_folder(checksum: &str, path: &str) -> Result<(), std::io::Error> {
     let scrambler = IdScrambler::new(checksum);
-    let val = id.parse::<u32>()?;
-    let result = match id.len() {
-        1..=4 => {
-            format!("{:010}", scrambler.scramble(val))
+
+    for entry in read_dir(path)? {
+        let entry = entry?;
+        let path = entry.path();
+        // We are only interested in directories
+        if path.is_file() {
+            continue;
         }
-        5..=10 => {
-            format!("{:04}", scrambler.unscramble(val))
-        }
-        _ => panic!("Invalid ID length"),
-    };
-    Ok(result)
+
+        let name = match path.file_name() {
+            Some(name) => name.to_str().unwrap(),
+            None => continue,
+        };
+
+        match filemgr::split_id_str(name) {
+            Some((id, description)) => {
+                let num_id = id.parse::<u32>().unwrap();
+                let new_id = match id.len() {
+                    1..=5 => {
+                        format!("{:010}", scrambler.scramble(num_id))
+                    }
+                    6..=10 => {
+                        format!("{:05}", scrambler.unscramble(num_id))
+                    }
+                    _ => panic!("Invalid ID length"),
+                };
+                let new_name = format!("{}-{}", new_id, description);
+                match std::fs::rename(&path, path.parent().unwrap().join(new_name)) {
+                    Ok(_) => (),
+                    Err(e) => println!(
+                        "Failed to rename '{}' ({})",
+                        path.join(name).to_str().unwrap(),
+                        e
+                    ),
+                }
+            }
+            None => {
+                println!("skipping: '{}'", name);
+                continue;
+            }
+        };
+    }
+    Ok(())
 }
 
 fn main() {
     let config = config::PsConfig::new();
-    let apa = config.load("config.pinsound");
-
-    // println!("{}", convert_id_str("JeanLucPicard", "0010").unwrap());
-    // println!("{}", convert_id_str("JeanLucPicard", "2824050793").unwrap());
+    _ = config.load("config.pinsound");
+    _ = process_folder("PantsOnFire", "TestPack/sfx");
 }
