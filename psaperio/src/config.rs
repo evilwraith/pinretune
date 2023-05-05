@@ -1,3 +1,13 @@
+//! # Configuration manager
+//! Provides a simple interface to work with PS configuration files.
+//!
+//! ## Example
+//! ``` rust
+//! # use psaperio::config::PsConfig;
+//! let config = PsConfig::new();
+//!_ = config.load("config.pinsound");
+//! ```
+
 use nom::{
     bytes::complete::{tag, take_till1, take_until},
     character::complete::{alphanumeric1, digit1, hex_digit1, space1},
@@ -112,13 +122,16 @@ fn parse_config(input: &str) -> IResult<&str, Vec<Primitive>> {
     separated_list1(tag("|"), parse_statement)(input)
 }
 
+/// Struct representing a PS configuration file.
+///
+/// *The configuration file format is not exclusive to soundpacks.*
 pub struct PsConfig {
     elements: HashSet<String>,
     version: u32,
 }
 
 impl PsConfig {
-    /// Create a new PsConfig struct
+    /// Create a new empty PsConfig struct
     pub fn new() -> Self {
         PsConfig {
             elements: HashSet::new(),
@@ -129,10 +142,11 @@ impl PsConfig {
     pub fn version(self) -> u32 {
         self.version
     }
-    /// Read the contents of a PinSound file into a vector of bytes and decrypt
+    /// Initialize struct by decrypting and parsing a PS config file.
+    /// This is a destructive action and will clear the current struct state.
     ///
     /// # Arguments
-    /// * `filename` - The name of the file to read
+    /// * `filename` - The name of the file to read from
     pub fn load(mut self, filename: &str) -> Result<(), std::io::Error> {
         let mut file = File::open(filename)?;
         let mut data = Vec::new();
@@ -153,10 +167,10 @@ impl PsConfig {
         Ok(())
     }
 
-    /// Write the contents of a vector of bytes to a PinSound file and encrypt
+    /// Write the current struct state to a encrypted PS configuration file.
     ///
     /// # Arguments
-    /// * `filename` - The name of the file to write
+    /// * `filename` - The name of the file to write to
     pub fn save(self, filename: &str, mut data: Vec<u8>) -> Result<(), std::io::Error> {
         let cipher = XSalsa20Poly1305::new_from_slice(PS_KEY).unwrap();
         _ = cipher.encrypt_in_place(PS_NONCE.into(), b"", &mut data);

@@ -1,8 +1,8 @@
-use psaperio::{config, filemgr, scrambler::IdScrambler};
+use psaperio::{config, scrambler::Scrambler, util};
 use std::fs::read_dir;
 
 pub fn process_folder(checksum: &str, path: &str) -> Result<(), std::io::Error> {
-    let scrambler = IdScrambler::new(checksum);
+    let scrambler = Scrambler::new(checksum);
 
     for entry in read_dir(path)? {
         let entry = entry?;
@@ -17,7 +17,7 @@ pub fn process_folder(checksum: &str, path: &str) -> Result<(), std::io::Error> 
             None => continue,
         };
 
-        match filemgr::split_id_str(name) {
+        match util::split_id_str(name) {
             Some((id, description)) => {
                 let num_id = id.parse::<u32>().unwrap();
                 let new_id = match id.len() {

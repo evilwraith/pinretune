@@ -1,3 +1,28 @@
+//! # Sound ID Scrambler/Unscrambler
+//! Module provides a simple interface to scramble/unscramble sound IDs.
+//!
+//! Sound IDs are encrypted using custom shuffle loops and two 256 byte lookup
+//! tables. A static seed and dynamic seed is used to derive the lookup tables.
+//! The dynamic seed is generated from the soundpack "checksum" which can be
+//! retrieved from the soundpack configuration file.
+//!
+//! ### Validation
+//! There is no way to validate if an id is scrambled or not. It is however possible
+//! to make an educated guess. Sound IDs sent by the pinball CPU are 16bit unsigned
+//! and as such will at most be 5 digits long (0-65535). Therefore any id having 6 or
+//! more digits can be considered scrambled.
+//!
+//! Furthermore, unscrambling a scrambled id with the correct checksum seed will
+//! always yield a id less than 65536.
+//! Any id greater than 4294967295 (32bit 0xffffffff) should be considered invalid.
+//!
+//! ## Example:
+//! ```
+//! # use psaperio::scrambler::Scrambler;
+//! let scrambler = Scrambler::new("checksum");
+//! let new_id = scrambler.scramble(12345);
+//! ```
+
 use super::bytes::Halves;
 use generic_array::GenericArray;
 use sha2::{Digest, Sha256};
@@ -67,7 +92,7 @@ fn generate_data(seed: &mut [u8; 48], size: usize) -> Vec<u8> {
         // In the original code this byte is taken from the first byte of the private sha256 state
         // field and will have endianess issues. This is slightly puzzling as the finalize call will
         // output the state in big endian so it would have made sense to use that for portability.
-        // In any case, this is why we fetch the third byte to replicate the original code.
+        // In any case, this is why we fetch the fourth byte to replicate the original code.
         result.push(ga_hbuf[3]);
     }
     result
@@ -92,17 +117,21 @@ impl IdLookupTable {
     }
 }
 
-pub struct IdScrambler {
+/// Sound ID scrambler
+pub struct Scrambler {
     tbl: IdLookupTable,
 }
 
-impl IdScrambler {
+impl Scrambler {
+    /// Initialise and return a new ID scrambler with the given dynamic "checksum" seed.
     pub fn new(checksum: &str) -> Self {
-        IdScrambler {
+        Scrambler {
             tbl: IdLookupTable::new(checksum),
         }
     }
 
+    /// Scramble the given ID and return the result. *This function does no
+    /// validation of the ID before or after scrambling.*
     pub fn scramble(&self, id: u32) -> u32 {
         let mut upper = id.hi().wrapping_add(self.tbl.offset1.lo());
         let mut lower = id.lo().wrapping_add(self.tbl.offset2.lo());
@@ -138,6 +167,8 @@ impl IdScrambler {
         (upper as u32) << 16 | lower as u32
     }
 
+    /// Unscramble the given ID and return the result. *This function does no
+    /// validation of the ID before or after unscrambling.*
     pub fn unscramble(&self, id: u32) -> u32 {
         let mut upper = id.hi();
         let mut lower = id.lo();
@@ -178,23 +209,23 @@ impl IdScrambler {
 
 #[cfg(test)]
 mod tests {
-    use super::IdScrambler;
+    use super::Scrambler;
 
     #[test]
     fn test_revscramble() {
-        let s = IdScrambler::new("Pinball");
+        let s = Scrambler::new("Pinball");
         assert_eq!(s.unscramble(s.scramble(777)), 777);
     }
 
     #[test]
     fn test_sttng() {
-        let s = IdScrambler::new("JeanLucPicard");
+        let s = Scrambler::new("JeanLucPicard");
         assert_eq!(s.scramble(10), 2824050793); // Multiball theme
     }
 
     #[test]
     fn test_tzremix() {
-        let s = IdScrambler::new("TZPSRemix");
+        let s = Scrambler::new("TZPSRemix");
         assert_eq!(s.scramble(10), 1098459480); // Multiball theme
     }
 }

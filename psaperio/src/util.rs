@@ -1,3 +1,6 @@
+//! Utility functions
+//!
+
 use nom::{bytes::complete::take_while, character::complete::char, sequence::terminated};
 
 // A function that will take OsString and split it into two strings on dash delimiter.

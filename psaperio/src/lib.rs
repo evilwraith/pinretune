@@ -1,14 +1,20 @@
 //! PS Aperio - A PinSound Utility Library
+//! ======================================
 //!
 //! This library provides utility functions for PinSound sound packs and configuration
-//! files. This includes encryption, decryption, scrambling and unscrambling of data.
+//! files.
 //!
-//! This library is not affiliated, associated, authorized, endorsed by, or in any way
-//! connected with PinSound, SARL, or any of its subsidiaries or its affiliates.
+//! Currently, this library provides the following:
+//! * Reading and writing of encrypted configuration files.
+//! * Scrambling and unscrambling of sound IDs.
+//! * Assorted utility functions for working with sound packs.
 //!
-//! PinSound is a registered trademark of PinSound, SARL.
+//! *This library is not affiliated, associated, authorized, endorsed by, or in any way
+//! connected with PinSound, SARL, or any of its subsidiaries or its affiliates.*
+//!
+//! *PinSound is a registered trademark of PinSound, SARL.*
 
 mod bytes;
 pub mod config;
-pub mod filemgr;
 pub mod scrambler;
+pub mod util;
