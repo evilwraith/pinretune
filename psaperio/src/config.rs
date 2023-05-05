@@ -1,11 +1,9 @@
 use nom::{
-    branch::alt,
-    bytes::complete::{tag, take_till1, take_until, take_while},
-    character::complete::{alphanumeric1, char, digit1, hex_digit1, multispace1, space1},
-    character::is_space,
-    combinator::{map_res, opt, recognize},
-    multi::{many0, separated_list1},
-    sequence::{pair, preceded, terminated},
+    bytes::complete::{tag, take_till1, take_until},
+    character::complete::{alphanumeric1, digit1, hex_digit1, space1},
+    combinator::recognize,
+    multi::separated_list1,
+    sequence::terminated,
     IResult,
 };
 use std::{
@@ -161,7 +159,7 @@ impl PsConfig {
     /// * `filename` - The name of the file to write
     pub fn save(self, filename: &str, mut data: Vec<u8>) -> Result<(), std::io::Error> {
         let cipher = XSalsa20Poly1305::new_from_slice(PS_KEY).unwrap();
-        cipher.encrypt_in_place(PS_NONCE.into(), b"", &mut data);
+        _ = cipher.encrypt_in_place(PS_NONCE.into(), b"", &mut data);
         let mut file = File::create(filename)?;
         file.write_all(&data)?;
         Ok(())
@@ -175,6 +173,6 @@ mod tests {
     #[test]
     fn checksum() {
         let t = parse_statement("checksum Test").unwrap();
-        assert_eq!(t, ("", "Test"));
+        assert_eq!(t, ("", Primitive::CHECKSUM("Test".to_string())));
     }
 }
