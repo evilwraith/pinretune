@@ -1,12 +1,10 @@
-# PinRetune - Uncovering the obscured
+# PinRetune - Redefining what it means to tune your pin
 A tool to assist with encryption, decryption, scrambling and unscrambling of all things PinSound.
 
-## What is PinSound?
-If you are active in the pinball community you most likely already know. PinSound is a suite of electronics and hardware designed to enhance the pinball experience. This repository and tooling will focus on the sound cards specifically, which by the way are great products!
+Due to laws on circumvention of copy protection there are no encryption keys included with this project. The keys need to be extracted from a live version of PinSound Studio Pro. 
 
-### What is PinRetune?
-
-## Pinsound commands
+## Pinsound syntax
+Pinsound configuration files support a list of commands delimited by a pipe ('|) character. The configuration file seems to have a trailing null byte like a typical c-string however works just fine without one.
 
 ### Checksum
 The checksum "seed" used to scramble sound ids. Each pin has it's own unique checksum. Some pins have multiple, presumably to combat conversion tables.
@@ -16,7 +14,7 @@ example: checksum TheSoprOrig
 ```
 
 ### Checksums
-Defines the list of valid checksums for a specific pin.
+Defines the list of valid checksums for a specific pin. This primitive is normally only seen in firmware configuration files but can be used everywhere. This means it can be used for giggles to generate a soundpack with a custom checksum.
 ```
 checksums <name> ...
 example: checksums SomeChecksum AnotherChecksum
