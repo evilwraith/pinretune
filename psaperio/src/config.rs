@@ -9,19 +9,34 @@
 //! ```
 
 use nom::{
-    bytes::complete::{tag, take_till1, take_until},
+    bytes::complete::{tag, take_till1, take_until, take_while},
     character::complete::{alphanumeric1, digit1, hex_digit1, space1},
     combinator::recognize,
     multi::separated_list1,
     sequence::terminated,
     IResult,
 };
+
 use std::{
-    collections::HashSet,
+    collections::HashMap,
+    fmt,
     fs::File,
     io::{Read, Write},
 };
 use xsalsa20poly1305::{AeadInPlace, KeyInit, XSalsa20Poly1305};
+
+/// Pinsound Configuration Primitives
+const APPVERSION: &str = "versionDetail";
+const CHECKSUM: &str = "checksum";
+const CHECKSUMS: &str = "checksums";
+const CHECKSUMVER: &str = "checksum_version";
+const CONCURRENT: &str = "max";
+const CONFIGVER: &str = "versionConfigFile";
+const DATETIME: &str = "timestamp";
+const DUCKING: &str = "ducking";
+const GAIN: &str = "gain";
+const PACKID: &str = "pspack_id";
+const RECORD: &str = "record_enabled";
 
 // PinSound file encryption key (256bit)
 // Note: Key is not stored in original PS binaries but generated on demand
@@ -35,35 +50,79 @@ static PS_NONCE: &[u8; 24] = &[
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Primitive {
-    APPVER(String),
+    APPVERSION(String),
     CHECKSUM(String),
     CHECKSUMS(Vec<String>),
     CHECKSUMVER(u32),
+    CONCURRENT(u32),
     CONFIGVER(u32),
     DATETIME(u32),
-    DUCKING(Kind),
+    DUCKING,
     FALLBACK(String),
-    GAIN(Kind),
-    MAX(Kind),
-    RECORD(bool),
-    SOUND(Action),
+    GAIN,
+    PACKID(u64),
+    RECORD,
+    SOUND,
+}
+
+impl fmt::Display for Primitive {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Primitive::APPVERSION(v) => write!(f, "{} {}", APPVERSION, v),
+            Primitive::CHECKSUM(v) => write!(f, "{} {}", CHECKSUM, v),
+            Primitive::CHECKSUMS(v) => write!(f, "{} {}", CHECKSUMS, v.join(" ")),
+            Primitive::CHECKSUMVER(v) => write!(f, "{} {}", CHECKSUMVER, v),
+            Primitive::CONCURRENT(v) => write!(f, "{} {}", CONCURRENT, v),
+            Primitive::CONFIGVER(v) => write!(f, "{} {}", CONFIGVER, v),
+            Primitive::DATETIME(v) => write!(f, "{} {}", DATETIME, v),
+            Primitive::DUCKING => write!(f, "{}", DUCKING),
+            Primitive::FALLBACK(v) => write!(f, "{}", v),
+            Primitive::GAIN => write!(f, "{}", GAIN),
+            Primitive::PACKID(v) => write!(f, "{} {:0x}", PACKID, v),
+            Primitive::RECORD => write!(f, "{}", RECORD),
+            Primitive::SOUND => write!(f, "xxx"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Action {
-    DELAY(u32),
-    GAIN(u32),
-    SHAKER(u32),
-    STOP(u32),
+    DELAY,
+    GAIN,
+    SHAKER,
+    STOP,
+}
+
+impl fmt::Display for Action {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Action::DELAY => write!(f, "delay"),
+            Action::GAIN => write!(f, "{}", GAIN),
+            Action::SHAKER => write!(f, "shakerPreset"),
+            Action::STOP => write!(f, "stop"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Kind {
-    JINGLE(u32),
-    MUSIC(u32),
-    SFX(u32),
-    SINGLE(u32),
-    VOICE(u32),
+    JINGLE,
+    MUSIC,
+    SFX,
+    SINGLE,
+    VOICE,
+}
+
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Kind::JINGLE => write!(f, "jingle"),
+            Kind::MUSIC => write!(f, "music"),
+            Kind::SFX => write!(f, "sfx"),
+            Kind::SINGLE => write!(f, "single"),
+            Kind::VOICE => write!(f, "voice"),
+        }
+    }
 }
 
 fn parse_hex(input: &str) -> IResult<&str, &str> {
@@ -83,65 +142,89 @@ fn parse_sound(input: &str) -> IResult<&str, &str> {
     parse_number(rest)
 }
 
-fn parse_fallback(input: &str) -> IResult<&str, Primitive> {
-    match recognize(take_until("|"))(input) {
-        Ok((rest, val)) => Ok((rest, Primitive::FALLBACK(val.to_string()))),
-        Err(e) => Err(e),
-    }
-}
-
-fn parse_checksum(input: &str) -> IResult<&str, Primitive> {
-    match alphanumeric1(input) {
-        Ok((rest, val)) => Ok((rest, Primitive::CHECKSUM(val.to_string()))),
-        Err(e) => Err(e),
-    }
-}
-
 fn parse_identifier(input: &str) -> IResult<&str, &str> {
     terminated(take_till1(char::is_whitespace), space1)(input)
 }
 
-fn parse_statement(input: &str) -> IResult<&str, Primitive> {
-    match parse_identifier(input) {
-        Ok((rest, val)) => {
-            let f = match val {
-                "checksum" => parse_checksum,
-                // "checksum_version" => parse_hex,
-                // "ducking" => parse_sound,
-                // "gain" => parse_sound,
-                // "max" => parse_sound,
-                _ => parse_fallback,
-            };
-            f(rest)
+fn parse_statement(input: &str) -> IResult<&str, &str> {
+    terminated(take_until("|"), take_while(|c| c == '|' || c == ' '))(input)
+}
+
+fn parse_config(cfg: &mut PsConfig, input: &str) -> PsConfig {
+    let mut data = input;
+    let mut config = PsConfig::new();
+
+    while let Ok((rest, val)) = parse_statement(data) {
+        match parse_identifier(val) {
+            Ok((rest, val)) => {
+                match val {
+                    APPVERSION => {
+                        if let Ok((_, v)) = parse_alnum(rest) {
+                            config.0.insert(APPVERSION.to_string(), v.to_string());
+                        }
+                    }
+                    CHECKSUM => {
+                        if let Ok((_, v)) = parse_alnum(rest) {
+                            config.0.insert(CHECKSUM.to_string(), v.to_string());
+                        }
+                    }
+                    CHECKSUMVER => {
+                        if let Ok((_, v)) = parse_hex(rest) {
+                            config.0.insert(CHECKSUMS.to_string(), v.to_string());
+                        }
+                    }
+                    CONCURRENT => {
+                        if let Ok((_, v)) = parse_alnum(rest) {
+                            config.0.insert(CONCURRENT.to_string(), v.to_string());
+                        }
+                    }
+                    CONFIGVER => {
+                        if let Ok((_, v)) = parse_hex(rest) {
+                            config.0.insert(CONFIGVER.to_string(), v.to_string());
+                        }
+                    }
+                    DATETIME => {
+                        if let Ok((_, v)) = parse_number(rest) {
+                            config.0.insert(DATETIME.to_string(), v.to_string());
+                        }
+                    }
+                    DUCKING => {
+                        if let Ok((_, v)) = parse_alnum(rest) {
+                            config.0.insert(DUCKING.to_string(), v.to_string());
+                        }
+                    }
+                    PACKID => {
+                        if let Ok((_, v)) = parse_hex(rest) {
+                            config.0.insert(PACKID.to_string(), v.to_string());
+                        }
+                    }
+                    RECORD => {
+                        if let Ok((_, v)) = parse_hex(rest) {
+                            config.0.insert(RECORD.to_string(), v.to_string());
+                        }
+                    }
+                    &_ => println!("{} not inplemented", val),
+                };
+            }
+            Err(e) => break,
         }
-        Err(e) => Err(e),
+        data = rest;
     }
+    config
 }
 
-fn parse_config(input: &str) -> IResult<&str, Vec<Primitive>> {
-    separated_list1(tag("|"), parse_statement)(input)
-}
-
+#[derive(Debug, Default)]
 /// Struct representing a PS configuration file.
 ///
 /// *The configuration file format is not exclusive to soundpacks.*
-pub struct PsConfig {
-    elements: HashSet<String>,
-    version: u32,
-}
+pub struct PsConfig(HashMap<String, String>);
 
 impl PsConfig {
     /// Create a new empty PsConfig struct
     pub fn new() -> Self {
-        PsConfig {
-            elements: HashSet::new(),
-            version: 1,
-        }
+        PsConfig(HashMap::new())
     }
 
-    pub fn version(self) -> u32 {
-        self.version
-    }
     /// Initialize struct by decrypting and parsing a PS config file.
     /// This is a destructive action and will clear the current struct state.
     ///
@@ -155,14 +238,9 @@ impl PsConfig {
         let cipher = XSalsa20Poly1305::new_from_slice(PS_KEY).unwrap();
         cipher.decrypt_in_place(PS_NONCE.into(), b"", &mut data);
 
+        println!("{}", String::from_utf8_lossy(&data));
         let cfg_str = String::from_utf8_lossy(&data);
-        println!("{}", cfg_str);
-
-        let (cfg_str, ver) = match parse_config(&cfg_str) {
-            Err(error) => panic!("shit"),
-            Ok(result) => result,
-        };
-        println!("a-> '{:?}'\nb-> '{}'", ver, cfg_str);
+        let config = parse_config(&mut self, &cfg_str);
 
         Ok(())
     }
@@ -184,9 +262,11 @@ impl PsConfig {
 mod tests {
     use super::*;
 
+    const TESTCONF: &str = "checksum_version 1|checksum Test|";
+
     #[test]
     fn checksum() {
-        let t = parse_statement("checksum Test").unwrap();
-        assert_eq!(t, ("", Primitive::CHECKSUM("Test".to_string())));
+        let (l, r) = parse_statement(TESTCONF).unwrap();
+        assert_eq!(r, CHECKSUMVER);
     }
 }
