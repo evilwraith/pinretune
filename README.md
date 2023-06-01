@@ -1,10 +1,12 @@
 # PinRetune - Redefining what it means to tune your pin
-A tool to assist with encryption, decryption, scrambling and unscrambling of all things PinSound.
+A tool to assist with encryption, decryption, scrambling and unscrambling of all things PinSound[^PinSound].
 
 Due to laws on circumvention of copy protection there are no encryption keys included with this project. The keys need to be extracted from a live version of PinSound Studio Pro. 
 
-## Pinsound syntax
+## Pinsound configuration syntax
 Pinsound configuration files support a list of commands delimited by a pipe ('|) character. The configuration file seems to have a trailing null byte like a typical c-string however works just fine without one.
+
+There are multiple types of configuration files and supported primitives may differ depending on configuration file.
 
 ### Checksum
 The checksum "seed" used to scramble sound ids. Each pin has it's own unique checksum. Some pins have multiple, presumably to combat conversion tables.
@@ -21,14 +23,14 @@ example: checksums SomeChecksum AnotherChecksum
 ```
 
 ### Shaker presets
-Receiving sound `id` command, will initiate shaker preset `preset`.
+Receiving sound command `id`, will initiate shaker preset `preset`.
 ```
 <id> shakerPreset <preset>
 example: 1080 shakerPreset 2
 ```
 
 ### Stop/cancel playback of sounds
-Receiving sound `id1` command, playback of sound `id2` will be cancelled.
+Receiving sound command `id1`, playback of sound `id2` will be cancelled.
 ```
 <id1> stop <id2>
 example: 120 stop 33
@@ -68,8 +70,6 @@ example: rtttl Addams Family :d=4, o=6, b=50 :32p, 32c#, 16f#, 32a#, 16f#, 32c#,
 
 `shakerCustomPresetDuration B 4000`
 
-# Disclaimer
-This software is not affiliated, associated, authorized, endorsed by, or in any way
-connected with PinSound, SARL, or any of its subsidiaries or its affiliates.
 
-PinSound is a registered trademark of PinSound, SARL.
+[^PinSound]: This software is not affiliated, associated, authorized, endorsed by, or in any way connected with PinSound, SARL, or any of its subsidiaries or its affiliates.
+  PinSound is a registered trademark of PinSound, SARL.
