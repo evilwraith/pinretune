@@ -22,21 +22,22 @@ use std::{
     fmt,
     fs::File,
     io::{Read, Write},
+    path::Path,
 };
 use xsalsa20poly1305::{AeadInPlace, KeyInit, XSalsa20Poly1305};
 
 /// Pinsound Configuration Primitives
-const APPVERSION: &str = "versionDetail";
-const CHECKSUM: &str = "checksum";
-const CHECKSUMS: &str = "checksums";
-const CHECKSUMVER: &str = "checksum_version";
-const CONCURRENT: &str = "max";
-const CONFIGVER: &str = "versionConfigFile";
-const DATETIME: &str = "timestamp";
-const DUCKING: &str = "ducking";
-const GAIN: &str = "gain";
-const PACKID: &str = "pspack_id";
-const RECORD: &str = "record_enabled";
+pub const APPVERSION: &str = "versionDetail";
+pub const CHECKSUM: &str = "checksum";
+pub const CHECKSUMS: &str = "checksums";
+pub const CHECKSUMVER: &str = "checksum_version";
+pub const CONCURRENT: &str = "max";
+pub const CONFIGVER: &str = "versionConfigFile";
+pub const DATETIME: &str = "timestamp";
+pub const DUCKING: &str = "ducking";
+pub const GAIN: &str = "gain";
+pub const PACKID: &str = "pspack_id";
+pub const RECORD: &str = "record_enabled";
 
 // PinSound file encryption key (256bit)
 // Note: Key is not stored in original PS binaries but generated on demand
@@ -165,6 +166,7 @@ fn parse_config(cfg: &mut PsConfig, input: &str) -> PsConfig {
                     }
                     CHECKSUM => {
                         if let Ok((_, v)) = parse_alnum(rest) {
+                            println!("Insert {} = {}", val, v);
                             config.0.insert(CHECKSUM.to_string(), v.to_string());
                         }
                     }
@@ -230,7 +232,7 @@ impl PsConfig {
     ///
     /// # Arguments
     /// * `filename` - The name of the file to read from
-    pub fn load(mut self, filename: &str) -> Result<(), std::io::Error> {
+    pub fn load<F: AsRef<Path>>(&mut self, filename: F) -> Result<PsConfig, std::io::Error> {
         let mut file = File::open(filename)?;
         let mut data = Vec::new();
 
@@ -240,9 +242,9 @@ impl PsConfig {
 
         println!("{}", String::from_utf8_lossy(&data));
         let cfg_str = String::from_utf8_lossy(&data);
-        let config = parse_config(&mut self, &cfg_str);
+        let config = parse_config(self, &cfg_str);
 
-        Ok(())
+        Ok(config)
     }
 
     /// Write the current struct state to a encrypted PS configuration file.
@@ -255,6 +257,15 @@ impl PsConfig {
         let mut file = File::create(filename)?;
         file.write_all(&data)?;
         Ok(())
+    }
+}
+
+use std::ops::Deref;
+impl Deref for PsConfig {
+    type Target = HashMap<String, String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
