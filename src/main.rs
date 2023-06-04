@@ -1,8 +1,14 @@
+use clap::{arg, Command};
 use psaperio::{config, scrambler::Scrambler, util};
 use std::fs::read_dir;
+use std::path::{Path, PathBuf};
 
-pub fn process_folder(checksum: &str, path: &str) -> Result<(), std::io::Error> {
+fn process_folder<P: AsRef<Path>>(checksum: &str, path: &P) -> Result<(), std::io::Error> {
     let scrambler = Scrambler::new(checksum);
+
+    if !path.as_ref().is_dir() {
+        panic!("Path is not a directory");
+    }
 
     for entry in read_dir(path)? {
         let entry = entry?;
@@ -48,8 +54,88 @@ pub fn process_folder(checksum: &str, path: &str) -> Result<(), std::io::Error> 
     Ok(())
 }
 
+const PS_CONFIG: &str = "config.pinsound";
+const SOUND_FOLDERS: [&str; 5] = ["jingle", "music", "sfx", "single", "voice"];
+
+fn process_soundpack(path: &Path) -> Result<(), std::io::Error> {
+    let filename = match path.is_file() {
+        true => path.to_path_buf(),
+        false => path.join(PS_CONFIG),
+    };
+
+    let mut conf = config::PsConfig::new();
+    let conf = conf.load(&filename)?;
+    println!("{:?}", conf.get(config::CHECKSUM));
+
+    let directory = filename.parent().unwrap();
+    for folder in SOUND_FOLDERS {
+        let dir = directory.join(folder);
+        if Path::new(&dir).exists() {
+            println!("Processing '{}'", folder);
+            // process_folder(conf.get(config::CHECKSUM).unwrap(), folder);
+        }
+    }
+    Ok(())
+}
+
+fn banner() {
+    println!(" _____________       ________     _____                    ");
+    println!(" ___  __ \\__(_)_________  __ \\______  /____  _____________ ");
+    println!(" __  /_/ /_  /__  __ \\_  /_/ /  _ \\  __/  / / /_  __ \\  _ \\");
+    println!(" _  ____/_  / _  / / /  _, _//  __/ /_ / /_/ /_  / / /  __/");
+    println!(" /_/     /_/  /_/ /_//_/ |_| \\___/\\__/ \\__,_/ /_/ /_/\\___/");
+    println!("\n        --==[ Liberate your pinball sound ]==--\n");
+}
+
+fn cli() -> Command {
+    Command::new("pinretune")
+        .about("Sound pack manipulation tool")
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        .subcommand(
+            Command::new("decrypt")
+                .about("Decrypt a configuration file")
+                .arg(arg!(<FILE> "File to decrypt")),
+        )
+        .subcommand(
+            Command::new("encrypt")
+                .about("Encrypt a configuration file")
+                .arg(arg!(<FILE> "File to encrypt")),
+        )
+        .subcommand(Command::new("scramble").about("Scramble a sound pack").arg(
+            arg!(<PATH> "Path to folder or config file").value_parser(clap::value_parser!(PathBuf)),
+        ))
+        .subcommand(
+            Command::new("unscramble")
+                .about("Unscramble a sound pack")
+                .arg(
+                    arg!(<PATH> "Path to folder or config file")
+                        .value_parser(clap::value_parser!(PathBuf)),
+                ),
+        )
+}
+
 fn main() {
-    let config = config::PsConfig::new();
-    _ = config.load("config.pinsound");
-    _ = process_folder("PantsOnFire", "TestPack/sfx");
+    banner();
+    let args = cli().get_matches();
+
+    match args.subcommand() {
+        Some(("decrypt", sub_args)) => {
+            todo!()
+        }
+        Some(("encrypt", sub_args)) => {
+            todo!()
+        }
+        Some(("scramble", sub_args)) => {
+            todo!()
+        }
+        Some(("unscramble", sub_args)) => {
+            let path = sub_args.get_one::<PathBuf>("PATH");
+            if let Err(e) = process_soundpack(path.unwrap()) {
+                println!("error: {}", e);
+            }
+        }
+        _ => unreachable!(),
+    }
+    // _ = process_folder(conf.get(config::CHECKSUM).unwrap(), "test");
 }
