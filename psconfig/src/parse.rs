@@ -3,7 +3,7 @@
 //!
 //! ## Example
 //! ``` rust
-//! # use psaperio::config::PsConfig;
+//! # use psconfig::config::PsConfig;
 //! let config = PsConfig::new();
 //!_ = config.load("config.pinsound");
 //! ```
@@ -14,15 +14,8 @@ use nom::{
     sequence::terminated,
     IResult,
 };
-
-use std::{
-    collections::HashMap,
-    fmt,
-    fs::File,
-    io::{Read, Write},
-    path::Path,
-};
-use xsalsa20poly1305::{AeadInPlace, KeyInit, XSalsa20Poly1305};
+use std::collections::HashMap;
+use std::fmt;
 
 /// Pinsound Configuration Primitives
 pub const APPVERSION: &str = "versionDetail";
@@ -35,17 +28,7 @@ pub const DATETIME: &str = "timestamp";
 pub const DUCKING: &str = "ducking";
 pub const GAIN: &str = "gain";
 pub const PACKID: &str = "pspack_id";
-pub const RECORD: &str = "record_enabled";
-
-// PinSound file encryption key (256bit)
-// Note: Key is not stored in original PS binaries but generated on demand
-static PS_KEY: &[u8; 32] = include_bytes!("extra/key.bin");
-
-// PinSound file encryption nonce (192bit)
-static PS_NONCE: &[u8; 24] = &[
-    0x4e, 0x3e, 0x68, 0x72, 0x10, 0xa0, 0xa3, 0x27, 0x5a, 0x00, 0xd2, 0x5b, 0x68, 0xd3, 0xf8, 0xba,
-    0x00, 0x43, 0x33, 0x95, 0x90, 0x9e, 0xdb, 0xf7,
-];
+pub const RECORDING: &str = "record_enabled";
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Primitive {
@@ -78,7 +61,7 @@ impl fmt::Display for Primitive {
             Primitive::FALLBACK(v) => write!(f, "{}", v),
             Primitive::GAIN => write!(f, "{}", GAIN),
             Primitive::PACKID(v) => write!(f, "{} {:0x}", PACKID, v),
-            Primitive::RECORD => write!(f, "{}", RECORD),
+            Primitive::RECORD => write!(f, "{}", RECORDING),
             Primitive::SOUND => write!(f, "xxx"),
         }
     }
@@ -198,9 +181,9 @@ fn parse_config(cfg: &mut PsConfig, input: &str) -> PsConfig {
                             config.0.insert(PACKID.to_string(), v.to_string());
                         }
                     }
-                    RECORD => {
+                    RECORDING => {
                         if let Ok((_, v)) = parse_hex(rest) {
-                            config.0.insert(RECORD.to_string(), v.to_string());
+                            config.0.insert(RECORDING.to_string(), v.to_string());
                         }
                     }
                     &_ => println!("{} not inplemented", val),
@@ -225,35 +208,14 @@ impl PsConfig {
         PsConfig(HashMap::new())
     }
 
-    /// Initialize struct by decrypting and parsing a PS config file.
-    /// This is a destructive action and will clear the current struct state.
-    ///
-    /// # Arguments
-    /// * `filename` - The name of the file to read from
-    pub fn load<F: AsRef<Path>>(&mut self, filename: F) -> Result<PsConfig, std::io::Error> {
-        let mut file = File::open(filename)?;
-        let mut data = Vec::new();
-
-        file.read_to_end(&mut data)?;
-        let cipher = XSalsa20Poly1305::new_from_slice(PS_KEY).unwrap();
-        cipher.decrypt_in_place(PS_NONCE.into(), b"", &mut data);
-
-        let cfg_str = String::from_utf8_lossy(&data);
-        let config = parse_config(self, &cfg_str);
-
+    pub fn str(data: &str) -> Result<PsConfig, std::io::Error> {
+        let mut conf = PsConfig::new();
+        let config = parse_config(&mut conf, data);
         Ok(config)
     }
 
-    /// Write the current struct state to a encrypted PS configuration file.
-    ///
-    /// # Arguments
-    /// * `filename` - The name of the file to write to
-    pub fn save(self, filename: &str, mut data: Vec<u8>) -> Result<(), std::io::Error> {
-        let cipher = XSalsa20Poly1305::new_from_slice(PS_KEY).unwrap();
-        _ = cipher.encrypt_in_place(PS_NONCE.into(), b"", &mut data);
-        let mut file = File::create(filename)?;
-        file.write_all(&data)?;
-        Ok(())
+    pub fn as_str(self, data: &PsConfig) -> Result<String, std::io::Error> {
+        todo!()
     }
 }
 

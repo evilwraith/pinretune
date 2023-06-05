@@ -1,5 +1,6 @@
 use clap::{arg, Command};
-use psaperio::{config, scrambler::Scrambler, util};
+use psaperio::{file as psfile, scrambler::Scrambler, util};
+use psconfig::{parse, parse::PsConfig};
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 
@@ -61,10 +62,11 @@ fn process_soundpack(path: &Path) -> Result<(), std::io::Error> {
         false => path.join(PS_CONFIG),
     };
 
-    let mut conf = config::PsConfig::new();
-    let conf = conf.load(&filename)?;
+    let conf = psfile::load(&filename)?;
+    let conf = String::from_utf8_lossy(&conf);
+    let conf = PsConfig::str(&conf)?;
 
-    let scrambler = Scrambler::new(conf.get(config::CHECKSUM).unwrap());
+    let scrambler = Scrambler::new(conf.get(parse::CHECKSUM).unwrap());
     let directory = filename.parent().unwrap();
     for folder in SOUND_FOLDERS {
         let dir = directory.join(folder);
