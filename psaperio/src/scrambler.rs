@@ -55,16 +55,16 @@ fn initialise_seed(checksum: &str) -> [u8; 48] {
 /// mutate_seed - Mutate seed with its own hash and return a u32 for use in ID scrambling
 fn mutate_seed(seed: &mut [u8; 48]) -> u32 {
     let mut hash: [u8; 32] = [0; 32];
-    let mut ga_hash = GenericArray::from_mut_slice(&mut hash[..]);
-    let mut hasher = Sha256::new();
+    let ga_hash = GenericArray::from_mut_slice(&mut hash[..]);
 
+    let mut hasher = Sha256::new();
     hasher.update(&seed);
-    hasher.finalize_into(&mut ga_hash);
+    hasher.finalize_into(ga_hash);
 
     let offset = seed[0x2f] as usize & 0xf;
     seed[0x2f] = seed[0x2f].wrapping_add(1);
 
-    for i in 0..32 as usize {
+    for i in 0..32 {
         seed[offset + i] ^= hash[i];
     }
 
@@ -75,12 +75,12 @@ fn mutate_seed(seed: &mut [u8; 48]) -> u32 {
 fn generate_data(seed: &mut [u8; 48], size: usize) -> Vec<u8> {
     let mut result: Vec<u8> = Vec::with_capacity(size);
     let mut hbuf: [u8; 32] = [0; 32];
-    let mut ga_hbuf = GenericArray::from_mut_slice(&mut hbuf);
+    let ga_hbuf = GenericArray::from_mut_slice(&mut hbuf);
 
     let mut hasher = Sha256::new();
     for _i in 0..size {
         hasher.update(&seed);
-        hasher.finalize_into_reset(&mut ga_hbuf);
+        hasher.finalize_into_reset(ga_hbuf);
 
         let offset: usize = seed[0x2f] as usize & 0xf;
         seed[0x2f] = seed[0x2f].wrapping_add(1);
@@ -138,7 +138,7 @@ impl Scrambler {
         let tbl1 = &self.tbl.lookup1;
         let tbl2 = &self.tbl.lookup2;
 
-        for round in 0..12 as u8 {
+        for round in 0..12 {
             let ih: u8 = upper.hi();
             let il: u8 = upper.lo() ^ round;
             let bvar1 = tbl2[(tbl1[ih as usize] ^ il) as usize];
@@ -175,7 +175,7 @@ impl Scrambler {
         let tbl1 = &self.tbl.lookup1;
         let tbl2 = &self.tbl.lookup2;
 
-        for round in (0..12 as u8).rev() {
+        for round in (0..12).rev() {
             let ih = lower.hi();
             let il = lower.lo() ^ round;
             let bvar1 = tbl1[(tbl2[ih as usize] ^ il) as usize];

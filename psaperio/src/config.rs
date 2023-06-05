@@ -9,10 +9,8 @@
 //! ```
 
 use nom::{
-    bytes::complete::{tag, take_till1, take_until, take_while},
+    bytes::complete::{take_till1, take_until, take_while},
     character::complete::{alphanumeric1, digit1, hex_digit1, space1},
-    combinator::recognize,
-    multi::separated_list1,
     sequence::terminated,
     IResult,
 };
@@ -208,7 +206,7 @@ fn parse_config(cfg: &mut PsConfig, input: &str) -> PsConfig {
                     &_ => println!("{} not inplemented", val),
                 };
             }
-            Err(e) => break,
+            Err(_) => break,
         }
         data = rest;
     }
@@ -240,7 +238,6 @@ impl PsConfig {
         let cipher = XSalsa20Poly1305::new_from_slice(PS_KEY).unwrap();
         cipher.decrypt_in_place(PS_NONCE.into(), b"", &mut data);
 
-        println!("{}", String::from_utf8_lossy(&data));
         let cfg_str = String::from_utf8_lossy(&data);
         let config = parse_config(self, &cfg_str);
 

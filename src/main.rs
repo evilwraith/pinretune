@@ -3,9 +3,7 @@ use psaperio::{config, scrambler::Scrambler, util};
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 
-fn process_folder<P: AsRef<Path>>(checksum: &str, path: &P) -> Result<(), std::io::Error> {
-    let scrambler = Scrambler::new(checksum);
-
+fn process_folder<P: AsRef<Path>>(scrambler: &Scrambler, path: &P) -> Result<(), std::io::Error> {
     if !path.as_ref().is_dir() {
         panic!("Path is not a directory");
     }
@@ -65,14 +63,14 @@ fn process_soundpack(path: &Path) -> Result<(), std::io::Error> {
 
     let mut conf = config::PsConfig::new();
     let conf = conf.load(&filename)?;
-    println!("{:?}", conf.get(config::CHECKSUM));
 
+    let scrambler = Scrambler::new(conf.get(config::CHECKSUM).unwrap());
     let directory = filename.parent().unwrap();
     for folder in SOUND_FOLDERS {
         let dir = directory.join(folder);
-        if Path::new(&dir).exists() {
+        if dir.exists() {
             println!("Processing '{}'", folder);
-            // process_folder(conf.get(config::CHECKSUM).unwrap(), folder);
+            process_folder(&scrambler, &dir)?;
         }
     }
     Ok(())
@@ -102,16 +100,21 @@ fn cli() -> Command {
                 .about("Encrypt a configuration file")
                 .arg(arg!(<FILE> "File to encrypt")),
         )
-        .subcommand(Command::new("scramble").about("Scramble a sound pack").arg(
-            arg!(<PATH> "Path to folder or config file").value_parser(clap::value_parser!(PathBuf)),
-        ))
+        .subcommand(
+            Command::new("scramble")
+                .about("Scramble a sound pack")
+                .after_help("To use a custom config file place one inside sound pack folder and specify its path.\nIf target path is a folder the default config.pinsound file will be used.")
+                .arg(
+                    arg!(<PATH> "Path to folder or config file")
+                    .value_parser(clap::value_parser!(PathBuf))))
         .subcommand(
             Command::new("unscramble")
                 .about("Unscramble a sound pack")
+                .after_help("To use a custom config file place one inside sound pack folder and specify its path.\nIf target path is a folder the default config.pinsound file will be used.")
                 .arg(
                     arg!(<PATH> "Path to folder or config file")
-                        .value_parser(clap::value_parser!(PathBuf)),
-                ),
+                    .value_parser(clap::value_parser!(PathBuf)),
+            ),
         )
 }
 
@@ -137,5 +140,4 @@ fn main() {
         }
         _ => unreachable!(),
     }
-    // _ = process_folder(conf.get(config::CHECKSUM).unwrap(), "test");
 }
