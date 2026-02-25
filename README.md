@@ -1,19 +1,37 @@
-# PinRetune - Liberate your pinball sound
-A tool that unlocks PinSound[^PinSound] sound packs and gives you full control to build and customize just the way you want.
+# PinRetune - PinSound configuration and sound-pack tools
 
-## What do you mean by "unlock"?
-PS configuration files are encrypted to prevent any kind of modification. In addition to further seal exclusivity there is also scrambling of sound IDs in sound packs. This makes it not only impractical to use the provided tooling but also impossible to fully customize sound packs on your own.
-For more details please have a look at the list of PS commands to see what you are missing out.
+PinRetune is a set of utilities for working with PinSound configuration files
+and sound packs. It provides tooling to read and write encrypted PinSound
+configuration files, manipulate sound pack IDs, and inspect or transform the
+configuration primitives used by PinSound devices.
 
-## Why did you build this?
-In short due to lack of support from the PS brothers. There is little effort put into resolving existing bugs in their software (both firmware and tooling) and any communication eventually ends up being a monologue.
+## What does "unlock" mean here?
 
-As I at the time had a couple of issues creating a sound pack for my STTNG I started poking around on my own. Initially I had no intention to build this tool however once I discovered that PS brothers intentionally crippled the modding capabilities of their product I had to dig deeper!
+Some PinSound files use encryption and ID scrambling to limit direct
+modification by end users. PinRetune provides utilities to read (and write)
+those files when the appropriate keys are available, and to translate between
+scrambled and unscrambled sound identifiers so authors can work with human-
+readable IDs.
 
-The PS brothers built something fantastic and pioneered the field of third party sound in pinball. But it seems they also lost their ways while growing from a hobby project to a business delivering products to pinball enthusiats all over the globe.
+See the `psconfig` module for details on the supported configuration
+primitives and the `psaperio` crate for the cryptographic and scrambling
+implementation.
+
+## Why this project exists
+
+This project began from a practical need to build and customize a sound pack
+for personal hardware. The goal is to provide reliable, well-documented tools
+for people who want to author, inspect or adapt PinSound content while
+preserving the integrity of original data. PinRetune is intended for users who
+already have any necessary keys and legal rights to modify the files they
+work with.
 
 #### Note regarding encryption keys
-*There are no encryption keys included with this project. Requests for keys and/or assistance with keys will be ignored.*
 
-[^PinSound]: This software is not affiliated, associated, authorized, endorsed by, or in any way connected with PinSound, SARL, or any of its subsidiaries or its affiliates.
-  PinSound is a registered trademark of PinSound, SARL.
+This repository does not contain any encryption keys. Requests for keys or
+assistance with obtaining them will not be acted upon.
+
+[Disclaimer]
+: This software is not affiliated with, endorsed by, or in any way connected
+  with PinSound, SARL or its affiliates. PinSound is a registered trademark of
+  PinSound, SARL.
