@@ -27,9 +27,9 @@ use super::bytes::Halves;
 use generic_array::GenericArray;
 use sha2::{Digest, Sha256};
 
-/// PinSound ID static encryption seed (256bit)
-/// Although the seed is not a encryption key by itself, it is used, together with a
-/// appended dynamic part, to to derive lookup tables for use in ID scrambling.
+/// PinSound ID static scrambler seed (256bit)
+/// The seed is used, together with a appended dynamic part, to to derive lookup
+/// tables for use in ID scrambling.
 static PS_SEED: &[u8; 32] = include_bytes!("extra/seed.bin");
 
 /// initialise_seed - Initialise seed with soundpack "checksum" for ID scrambling  
@@ -90,9 +90,9 @@ fn generate_data(seed: &mut [u8; 48], size: usize) -> Vec<u8> {
         }
 
         // In the original code this byte is taken from the first byte of the private sha256 state
-        // field and will have endianess issues. This is slightly puzzling as the finalize call will
-        // output the state in big endian so it would have made sense to use that for portability.
-        // In any case, this is why we fetch the fourth byte to replicate the original code.
+        // field and will have endianess issues. This is slightly puzzling since taking it after the
+        // finalize call would have resulted in portable code.
+        // In any case, this is why we take the fourth byte from the output to remain portable.
         result.push(ga_hbuf[3]);
     }
     result

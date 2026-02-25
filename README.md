@@ -13,7 +13,7 @@ As I at the time had a couple of issues creating a sound pack for my STTNG I sta
 The PS brothers built something fantastic and pioneered the field of third party sound in pinball. But it seems they also lost their ways while growing from a hobby project to a business delivering products to pinball enthusiats all over the globe.
 
 #### Note regarding encryption keys
-*I am not sure if the PS file encryption should be considered copy protection but for the time being I have decided play it safe. As such, due to laws on circumvention of copy protection there are no encryption keys included with this project. Requests for keys and/or assistance with keys will be ignored.*
+*There are no encryption keys included with this project. Requests for keys and/or assistance with keys will be ignored.*
 
 [^PinSound]: This software is not affiliated, associated, authorized, endorsed by, or in any way connected with PinSound, SARL, or any of its subsidiaries or its affiliates.
   PinSound is a registered trademark of PinSound, SARL.

@@ -3,19 +3,28 @@ Pinsound configuration files support a list of commands delimited by a pipe ('|)
 
 There are multiple types of configuration files and supported primitives may differ depending on configuration file.
 
-### Checksum
+### checksum_version
+The version of checksum format.
+
+### checksum
 The checksum "seed" used to scramble sound ids. Each pin has it's own unique checksum. Some pins have multiple, presumably to combat conversion tables.
 ```
 checksum <seed>
 example: checksum TheSoprOrig
 ```
 
-### Checksums
+### checksums
 Defines the list of valid checksums for a specific pin. This primitive is normally only seen in firmware configuration files but can be used everywhere. This means it can be used for giggles to generate a soundpack with a custom checksum.
 ```
 checksums <name> ...
 example: checksums SomeChecksum AnotherChecksum
 ```
+
+### pspack_id
+Unique identifire of this sound pack. Seems to be a 16 character string.
+
+### record_enable
+If recording is enabled on the Pinsound card.
 
 ### Shaker presets
 Receiving sound command `id`, will initiate shaker preset `preset`.
@@ -25,7 +34,7 @@ example: 1080 shakerPreset 2
 ```
 
 ### Stop/cancel playback of sounds
-Receiving sound command `id1`, playback of sound `id2` will be cancelled.
+Upon receiving sound command `id1`, playback of sound `id2` will be cancelled.
 ```
 <id1> stop <id2>
 example: 120 stop 33

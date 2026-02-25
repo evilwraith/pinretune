@@ -3,8 +3,7 @@
 //! ## Example
 //! ``` rust
 //! # use psaperio::file;
-//! let config = PsConfig::new();
-//!_ = config.load("config.pinsound");
+//!_ = file::load("config.pinsound");
 //! ```
 
 use std::{
@@ -13,7 +12,7 @@ use std::{
     path::Path,
 };
 
-use xsalsa20poly1305::{aead::Aead, AeadInPlace, KeyInit, XSalsa20Poly1305};
+use xsalsa20poly1305::{AeadInPlace, KeyInit, XSalsa20Poly1305};
 
 // PinSound file encryption key (256bit)
 // Note: Key is originally derived from a set of hashing functions and can not be found in binaries
@@ -34,7 +33,7 @@ pub fn load<F: AsRef<Path>>(filename: F) -> Result<Vec<u8>, std::io::Error> {
     let mut data = Vec::new();
     file.read_to_end(&mut data)?;
 
-    // Decrypt can fail if the key if wrong or data is corrupted
+    // Decrypt can fail if the key is wrong or data is corrupted
     let cipher = XSalsa20Poly1305::new_from_slice(PS_KEY).unwrap();
     match cipher.decrypt_in_place(PS_NONCE.into(), b"", &mut data) {
         Ok(()) => Ok(data),
@@ -46,9 +45,9 @@ pub fn load<F: AsRef<Path>>(filename: F) -> Result<Vec<u8>, std::io::Error> {
 ///
 /// # Arguments
 /// * `filename` - The name of the file to write to
-/// * `data`- Vec<u8> to encrypt and write
-pub fn save<F: AsRef<Path>>(filename: &str, data: &Vec<u8>) -> Result<(), std::io::Error> {
-    let mut data = data.clone();
+/// * `data`- Byte slice to encrypt and write
+pub fn save<F: AsRef<Path>>(filename: F, data: &[u8]) -> Result<(), std::io::Error> {
+    let mut data = data.to_vec();
     let cipher = XSalsa20Poly1305::new_from_slice(PS_KEY).unwrap();
     cipher
         .encrypt_in_place(PS_NONCE.into(), b"", &mut data)
