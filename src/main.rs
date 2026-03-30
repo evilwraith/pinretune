@@ -113,7 +113,7 @@ fn banner() {
     println!(" __  /_/ /_  /__  __ \\_  /_/ /  _ \\  __/  / / /_  __ \\  _ \\");
     println!(" _  ____/_  / _  / / /  _, _//  __/ /_ / /_/ /_  / / /  __/");
     println!(" /_/     /_/  /_/ /_//_/ |_| \\___/\\__/ \\__,_/ /_/ /_/\\___/");
-    println!("\n        --==[ Liberate your pinball sound ]==--\n");
+    println!("\n        --==[ ReTune your pinball sounds ]==--\n");
 }
 
 fn cli() -> Command {
