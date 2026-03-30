@@ -12,7 +12,7 @@ use std::{
     path::Path,
 };
 
-use xsalsa20poly1305::{AeadInPlace, KeyInit, XSalsa20Poly1305};
+use crypto_secretbox::{AeadInPlace, KeyInit, XSalsa20Poly1305};
 
 // PinSound file encryption key (256bit)
 // Note: Key is originally derived from a set of hashing functions and can not be found in binaries
