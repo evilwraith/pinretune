@@ -1,10 +1,21 @@
-//! Byte manipulation
+//! Byte-level manipulation utilities.
 //!
+//! Provides the [`Halves`] trait for splitting integer types into their
+//! high and low halves — for example, splitting a `u32` into two `u16`s
+//! or a `u16` into two `u8`s.
 
+/// Split an integer into its high and low halves.
+///
+/// The high half contains the most-significant bits and the low half
+/// the least-significant bits, both of half the original width.
 pub trait Halves {
+    /// The type of each half (half the bit-width of `Self`).
     type Item;
 
+    /// Returns the most-significant (upper) half.
     fn hi(&self) -> Self::Item;
+
+    /// Returns the least-significant (lower) half.
     fn lo(&self) -> Self::Item;
 }
 
