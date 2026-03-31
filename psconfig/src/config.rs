@@ -13,6 +13,7 @@
 //!    [`crate::parse::parse_sound_command`]) to parse it.
 
 use std::fmt;
+use std::str::FromStr;
 
 /// Sound category kind used by `max` and `ducking` statements.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,19 +25,34 @@ pub enum Kind {
     Voice,
 }
 
-impl Kind {
-    /// Parse a kind string. Returns `None` for unrecognised values.
-    pub fn parse(s: &str) -> Option<Self> {
+/// The error type returned when a string cannot be parsed into a [`Kind`].
+#[derive(Debug, PartialEq, Eq)]
+pub struct UnknownKind;
+
+impl fmt::Display for UnknownKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unknown sound category kind")
+    }
+}
+
+impl std::error::Error for UnknownKind {}
+
+impl FromStr for Kind {
+    type Err = UnknownKind;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "jingle" => Some(Kind::Jingle),
-            "music" => Some(Kind::Music),
-            "sfx" => Some(Kind::Sfx),
-            "single" => Some(Kind::Single),
-            "voice" => Some(Kind::Voice),
-            _ => None,
+            "jingle" => Ok(Kind::Jingle),
+            "music" => Ok(Kind::Music),
+            "sfx" => Ok(Kind::Sfx),
+            "single" => Ok(Kind::Single),
+            "voice" => Ok(Kind::Voice),
+            _ => Err(UnknownKind),
         }
     }
+}
 
+impl Kind {
     /// All known kind values, useful for iteration.
     pub const ALL: [Kind; 5] = [
         Kind::Jingle,
@@ -75,9 +91,9 @@ pub enum SoundAction {
 impl fmt::Display for SoundAction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SoundAction::Stop(id) => write!(f, "stop {}", id),
-            SoundAction::Delay(ms) => write!(f, "delay {}", ms),
-            SoundAction::ShakerPreset(p) => write!(f, "shakerPreset {}", p),
+            SoundAction::Stop(id) => write!(f, "stop {id}"),
+            SoundAction::Delay(ms) => write!(f, "delay {ms}"),
+            SoundAction::ShakerPreset(p) => write!(f, "shakerPreset {p}"),
             SoundAction::Preload => write!(f, "preload"),
         }
     }
@@ -121,19 +137,19 @@ pub enum Statement {
 impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Statement::AppVersion(v) => write!(f, "versionDetail {}", v),
-            Statement::Checksum(v) => write!(f, "checksum {}", v),
+            Statement::AppVersion(v) => write!(f, "versionDetail {v}"),
+            Statement::Checksum(v) => write!(f, "checksum {v}"),
             Statement::Checksums(v) => write!(f, "checksums {}", v.join(" ")),
-            Statement::ChecksumVersion(v) => write!(f, "checksum_version {}", v),
-            Statement::ConfigVersion(v) => write!(f, "versionConfigFile {}", v),
-            Statement::MaxConcurrent { kind, count } => write!(f, "max {} {}", kind, count),
-            Statement::Timestamp(v) => write!(f, "timestamp {}", v),
-            Statement::Ducking { kind, level } => write!(f, "ducking {} {}", kind, level),
-            Statement::PackId(v) => write!(f, "pspack_id {}", v),
-            Statement::RecordEnabled(v) => write!(f, "record_enabled {}", v),
-            Statement::Rtttl(v) => write!(f, "rtttl {}", v),
-            Statement::SoundCommand { id, action } => write!(f, "{} {}", id, action),
-            Statement::Unknown(v) => write!(f, "{}", v),
+            Statement::ChecksumVersion(v) => write!(f, "checksum_version {v}"),
+            Statement::ConfigVersion(v) => write!(f, "versionConfigFile {v}"),
+            Statement::MaxConcurrent { kind, count } => write!(f, "max {kind} {count}"),
+            Statement::Timestamp(v) => write!(f, "timestamp {v}"),
+            Statement::Ducking { kind, level } => write!(f, "ducking {kind} {level}"),
+            Statement::PackId(v) => write!(f, "pspack_id {v}"),
+            Statement::RecordEnabled(v) => write!(f, "record_enabled {v}"),
+            Statement::Rtttl(v) => write!(f, "rtttl {v}"),
+            Statement::SoundCommand { id, action } => write!(f, "{id} {action}"),
+            Statement::Unknown(v) => write!(f, "{v}"),
         }
     }
 }
@@ -159,9 +175,7 @@ pub struct PsConfig {
 impl PsConfig {
     /// Create a new empty configuration.
     pub fn new() -> Self {
-        PsConfig {
-            statements: Vec::new(),
-        }
+        Self::default()
     }
 
     /// Get the checksum seed value used for ID scrambling.
