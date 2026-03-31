@@ -26,11 +26,14 @@
 use super::bytes::Halves;
 use sha2::digest::{FixedOutput, FixedOutputReset};
 use sha2::{Digest, Sha256};
-use std::convert::TryInto;
 
 /// PinSound ID static scrambler seed (256‑bit).
 /// This is compiled in once and reused when a dynamic checksum is supplied.
 const PS_SEED: [u8; 32] = *include_bytes!("extra/seed.bin");
+
+/// Number of rounds in the Feistel-like permutation network.
+/// Matches the value used by the original PinSound firmware.
+const ROUNDS: usize = 12;
 
 /// Internal generator state used during the "key schedule" phase.
 ///
@@ -65,8 +68,12 @@ impl Seed {
         Seed(result)
     }
 
-    /// Mutate the state and return a 32‑bit word derived from the hash.
-    fn next_offset(&mut self) -> u32 {
+    /// Advance the state by one step and return the resulting hash bytes.
+    ///
+    /// This is the core "clock" of the key schedule: hash the current buffer,
+    /// XOR the output back in at a rolling offset, then return the raw hash so
+    /// callers can extract whatever bytes they need from it.
+    fn step(&mut self) -> [u8; 32] {
         let hash = Sha256::digest(self.0);
 
         let offset = (self.0[0x2f] as usize) & 0xf;
@@ -76,27 +83,24 @@ impl Seed {
             self.0[offset + i] ^= b;
         }
 
-        u32::from_be_bytes(hash[0..4].try_into().unwrap())
+        let mut out = [0u8; 32];
+        out.copy_from_slice(&hash);
+        out
     }
 
-    /// Produce a 256‑element lookup table and advance the state accordingly.
+    /// Advance the state and return a 32‑bit word from the first four hash bytes.
+    fn next_offset(&mut self) -> u32 {
+        let hash = self.step();
+        u32::from_be_bytes([hash[0], hash[1], hash[2], hash[3]])
+    }
+
+    /// Produce a 256‑element lookup table, advancing the state once per entry.
     fn generate_table(&mut self) -> [u8; 256] {
         let mut table = [0u8; 256];
-
         for entry in table.iter_mut() {
-            let hash = Sha256::digest(self.0);
-
-            let offset = (self.0[0x2f] as usize) & 0xf;
-            self.0[0x2f] = self.0[0x2f].wrapping_add(1);
-
-            for (i, &b) in hash.iter().enumerate() {
-                self.0[offset + i] ^= b;
-            }
-
-            // fourth byte matches original implementation's behaviour
-            *entry = hash[3];
+            // The fourth byte of each hash step matches the original implementation.
+            *entry = self.step()[3];
         }
-
         table
     }
 }
@@ -125,8 +129,6 @@ impl IdLookupTable {
 pub struct Scrambler {
     tbl: IdLookupTable,
 }
-
-const ROUNDS: usize = 12;
 
 impl Scrambler {
     /// Create a new scrambler keyed by the provided checksum.

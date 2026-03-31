@@ -1,7 +1,7 @@
 //! Parser for PinSound configuration files.
 //!
 //! Configuration files consist of pipe-delimited statements. Each statement
-//! begins with a keyword (or numeric sound ID) followed by optional arguments
+//! begins with a keyword or numeric sound ID followed by optional arguments
 //! separated by whitespace.
 //!
 //! ## Example
@@ -45,7 +45,7 @@ fn parse_statement(input: &str) -> Result<Statement, ParseError> {
     let (keyword, rest) = split_first_token(input);
 
     // Leading digits → sound command
-    if !keyword.is_empty() && keyword.chars().all(|c| c.is_ascii_digit()) {
+    if !keyword.is_empty() && keyword.bytes().all(|b| b.is_ascii_digit()) {
         return parse_sound_command(keyword, rest);
     }
 
@@ -89,7 +89,7 @@ fn parse_sound_command(id_str: &str, rest: &str) -> Result<Statement, ParseError
             let full = if rest.is_empty() {
                 id_str.to_string()
             } else {
-                format!("{} {}", id_str, rest)
+                format!("{id_str} {rest}")
             };
             return Ok(Statement::Unknown(full));
         }
@@ -112,7 +112,7 @@ fn split_first_token(input: &str) -> (&str, &str) {
 fn parse_kind_u32(field: &'static str, input: &str) -> Result<(Kind, u32), ParseError> {
     let (kind_str, value_str) = split_first_token(input);
 
-    let kind = Kind::parse(kind_str).ok_or_else(|| ParseError::InvalidValue {
+    let kind = kind_str.parse::<Kind>().map_err(|_| ParseError::InvalidValue {
         field,
         value: kind_str.to_string(),
     })?;

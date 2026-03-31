@@ -37,45 +37,38 @@ fn process_folder(
             continue;
         }
 
-        let name = match entry_path.file_name().and_then(|n| n.to_str()) {
-            Some(n) => n,
-            None => continue,
+        let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) else {
+            continue;
         };
 
-        let (id_str, description) = match util::split_id_str(name) {
-            Some(pair) => pair,
-            None => {
-                eprintln!("skipping: '{}'", name);
-                continue;
-            }
+        let Some((id_str, description)) = util::split_id_str(name) else {
+            eprintln!("skipping: '{name}'");
+            continue;
         };
 
-        let num_id: u32 = match id_str.parse() {
-            Ok(n) => n,
-            Err(_) => {
-                eprintln!("warning: invalid id '{}' in '{}'", id_str, name);
-                continue;
-            }
+        let Ok(num_id) = id_str.parse::<u32>() else {
+            eprintln!("warning: invalid id '{id_str}' in '{name}'");
+            continue;
         };
 
         let new_id = if scramble {
             if id_str.len() > 5 {
-                eprintln!("warning: '{}' appears already scrambled, skipping", name);
+                eprintln!("warning: '{name}' appears already scrambled, skipping");
                 continue;
             }
             format!("{:010}", scrambler.scramble(num_id))
         } else {
             if id_str.len() <= 5 {
-                eprintln!("warning: '{}' does not appear scrambled, skipping", name);
+                eprintln!("warning: '{name}' does not appear scrambled, skipping");
                 continue;
             }
             format!("{:05}", scrambler.unscramble(num_id))
         };
 
-        let new_name = format!("{}-{}", new_id, description);
+        let new_name = format!("{new_id}-{description}");
         let new_path = entry_path.parent().unwrap().join(&new_name);
         if let Err(e) = fs::rename(&entry_path, &new_path) {
-            eprintln!("warning: failed to rename '{}': {}", name, e);
+            eprintln!("warning: failed to rename '{name}': {e}");
         }
     }
     Ok(())
@@ -100,7 +93,7 @@ fn process_soundpack(path: &Path, scramble: bool) -> Result<(), Box<dyn std::err
     for folder in SOUND_FOLDERS {
         let dir = directory.join(folder);
         if dir.exists() {
-            println!("Processing '{}'", folder);
+            println!("Processing '{folder}'");
             process_folder(&scrambler, &dir, scramble)?;
         }
     }
@@ -167,14 +160,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             let file = sub_args.get_one::<String>("FILE").unwrap();
             let data = psfile::load(file)?;
             let text = String::from_utf8_lossy(&data);
-            println!("{}", text);
+            println!("{text}");
         }
         Some(("encrypt", sub_args)) => {
             let input = sub_args.get_one::<String>("INPUT").unwrap();
             let output = sub_args.get_one::<String>("OUTPUT").unwrap();
             let data = fs::read(input)?;
             psfile::save(output, &data)?;
-            println!("Encrypted '{}' -> '{}'", input, output);
+            println!("Encrypted '{input}' -> '{output}'");
         }
         Some(("scramble", sub_args)) => {
             let path = sub_args.get_one::<PathBuf>("PATH").unwrap();
@@ -192,7 +185,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 fn main() {
     if let Err(e) = run() {
-        eprintln!("error: {}", e);
+        eprintln!("error: {e}");
         process::exit(1);
     }
 }
