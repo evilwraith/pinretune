@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Martin Åkesson
+
 //! Utility functions for PinSound path and identifier handling.
 
 use nom::{Parser, bytes::complete::take_while, character::complete::char, sequence::terminated};

@@ -1,3 +1,17 @@
+// Copyright 2026 Martin Åkesson
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+// or implied. See the License for the specific language governing
+// permissions and limitations under the License.
+
 //! Parser for PinSound configuration files.
 //!
 //! Configuration files consist of pipe-delimited statements. Each statement
@@ -112,10 +126,12 @@ fn split_first_token(input: &str) -> (&str, &str) {
 fn parse_kind_u32(field: &'static str, input: &str) -> Result<(Kind, u32), ParseError> {
     let (kind_str, value_str) = split_first_token(input);
 
-    let kind = kind_str.parse::<Kind>().map_err(|_| ParseError::InvalidValue {
-        field,
-        value: kind_str.to_string(),
-    })?;
+    let kind = kind_str
+        .parse::<Kind>()
+        .map_err(|_| ParseError::InvalidValue {
+            field,
+            value: kind_str.to_string(),
+        })?;
 
     let value = parse_u32(field, value_str)?;
     Ok((kind, value))

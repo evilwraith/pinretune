@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Martin Åkesson
+
 //! Byte-level manipulation utilities.
 //!
 //! Provides the [`Halves`] trait for splitting integer types into their

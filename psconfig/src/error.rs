@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Martin Åkesson
+
 //! Error types for PinSound configuration parsing.
 
 use std::fmt;

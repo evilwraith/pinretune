@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Martin Åkesson
+
 //! Typed configuration model for PinSound configuration files.
 //!
 //! A configuration file consists of pipe-delimited [`Statement`]s. Each statement

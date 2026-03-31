@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Martin Åkesson
+
 //! Provides a simple interface to work with encrypted PS files.
 //!
 //! ## Example

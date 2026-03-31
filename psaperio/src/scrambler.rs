@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Martin Åkesson
+
 //! # Sound ID Scrambler/Unscrambler
 //! Module provides a simple interface to scramble/unscramble sound IDs.
 //!
