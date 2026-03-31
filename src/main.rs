@@ -130,14 +130,13 @@ fn cli() -> Command {
         .arg_required_else_help(true)
         .subcommand(
             Command::new("decrypt")
-                .about("Decrypt a configuration file")
-                .arg(arg!(<FILE> "File to decrypt")),
+                .about("Decrypt a configuration file in place")
+                .arg(arg!(<FILE> "Encrypted file to decrypt in place")),
         )
         .subcommand(
             Command::new("encrypt")
-                .about("Encrypt a configuration file")
-                .arg(arg!(<INPUT> "Plaintext input file"))
-                .arg(arg!(<OUTPUT> "Encrypted output file")),
+                .about("Encrypt a configuration file in place")
+                .arg(arg!(<FILE> "Plaintext file to encrypt in place")),
         )
         .subcommand(
             Command::new("scramble")
@@ -173,15 +172,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         Some(("decrypt", sub_args)) => {
             let file = sub_args.get_one::<String>("FILE").unwrap();
             let data = psfile::load(file)?;
-            let text = String::from_utf8_lossy(&data);
-            println!("{text}");
+            fs::write(file, &data)?;
+            println!("Decrypted '{file}'");
         }
         Some(("encrypt", sub_args)) => {
-            let input = sub_args.get_one::<String>("INPUT").unwrap();
-            let output = sub_args.get_one::<String>("OUTPUT").unwrap();
-            let data = fs::read(input)?;
-            psfile::save(output, &data)?;
-            println!("Encrypted '{input}' -> '{output}'");
+            let file = sub_args.get_one::<String>("FILE").unwrap();
+            let data = fs::read(file)?;
+            psfile::save(file, &data)?;
+            println!("Encrypted '{file}'");
         }
         Some(("scramble", sub_args)) => {
             let path = sub_args.get_one::<PathBuf>("PATH").unwrap();
