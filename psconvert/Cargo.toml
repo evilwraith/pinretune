@@ -1,0 +1,9 @@
+[package]
+name = "psconvert"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+psaperio = { path = "../psaperio" }
+psconfig = { path = "../psconfig" }
+hound = "3"

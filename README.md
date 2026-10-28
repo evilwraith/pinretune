@@ -14,6 +14,11 @@ See the [psconfig](psconfig) crate for details on the supported configuration
 primitives and the [psaperio](psaperio) crate for the cryptographic and scrambling
 implementation.
 
+The [psconvert](psconvert) crate converts a sound pack into an AltSound package
+for PinMAME and Visual Pinball (`pinretune list` / `pinretune convert`): plain
+sound command IDs, PinSound's group behaviour as G-Sound or AltSound types, and the
+pack's level.
+
 ## Why this project exists
 
 This project began from a practical need to build and customize a sound pack

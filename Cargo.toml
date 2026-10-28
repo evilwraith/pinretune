@@ -1,5 +1,5 @@
 [workspace]
-members = ["psaperio","psconfig"]
+members = ["psaperio","psconfig","psconvert"]
 
 [package]
 name = "pinretune"
@@ -11,4 +11,5 @@ edition = "2024"
 [dependencies]
 psaperio = { path="psaperio" }
 psconfig = { path="psconfig" }
+psconvert = { path="psconvert" }
 clap = { version = "4", features = ["derive"] }

@@ -15,6 +15,8 @@
 use clap::{Command, arg};
 use psaperio::{file as psfile, scrambler::Scrambler, util};
 use psconfig::parse;
+use psconvert::altsound::{self, Format, Options};
+use psconvert::pack::Pack;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -114,6 +116,60 @@ fn process_soundpack(path: &Path, scramble: bool) -> Result<(), Box<dyn std::err
     Ok(())
 }
 
+/// Print every sound of a pack with its unscrambled command ID.
+fn list_soundpack(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let pack = Pack::load(path)?;
+    if let Some(roms) = pack.config.roms() {
+        println!("roms: {}", roms.join(" "));
+    }
+    for sound in &pack.sounds {
+        println!(
+            "0x{:04x}\t{}\t{}\t{} file(s)",
+            sound.command,
+            sound.kind,
+            sound.folder,
+            sound.files.len()
+        );
+    }
+    for extra in &pack.extras {
+        println!("also uses: {extra}");
+    }
+    Ok(())
+}
+
+/// Convert a pack into an AltSound package.
+fn convert_soundpack(
+    path: &Path,
+    out: &Path,
+    options: &Options,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let report = altsound::convert(path, out, options)?;
+    if let Some(level) = report.loudness_db {
+        println!(
+            "Pack loudness {level:.1} dB average, package_gain_db {:.1}",
+            report.gain_db
+        );
+    }
+    println!(
+        "{} samples, {} commands -> '{}'",
+        report.samples,
+        report.commands,
+        out.display()
+    );
+    let pack = Pack::load(path)?;
+    match pack.config.roms() {
+        Some(roms) => println!(
+            "Pack ROMs: {} (name the folder after the ROM PinMAME runs)",
+            roms.join(" ")
+        ),
+        None => println!("The pack lists no ROMs: name the folder after the ROM PinMAME runs"),
+    }
+    for item in &report.not_converted {
+        println!("not converted: {item}");
+    }
+    Ok(())
+}
+
 fn banner() {
     println!(" _____________       ________     _____                    ");
     println!(" ___  __ \\__(_)_________  __ \\______  /____  _____________ ");
@@ -162,6 +218,43 @@ fn cli() -> Command {
                         .value_parser(clap::value_parser!(PathBuf)),
                 ),
         )
+        .subcommand(
+            Command::new("list")
+                .about("List the sounds of a sound pack with their command IDs")
+                .arg(
+                    arg!(<PATH> "Sound pack folder")
+                        .value_parser(clap::value_parser!(PathBuf)),
+                ),
+        )
+        .subcommand(
+            Command::new("convert")
+                .about("Convert a sound pack into an AltSound package for PinMAME / VPX")
+                .after_help(
+                    "OUT is the package folder to create, altsound/<rom>/ in PinMAME's folder; it must not exist.\n\
+                     The pack is raised to --target-db average loudness through package_gain_db in\n\
+                     altsound.ini (never lowered); the audio is copied unchanged.",
+                )
+                .arg(
+                    arg!(<PATH> "Sound pack folder")
+                        .value_parser(clap::value_parser!(PathBuf)),
+                )
+                .arg(
+                    arg!(<OUT> "Package folder to create")
+                        .value_parser(clap::value_parser!(PathBuf)),
+                )
+                .arg(
+                    arg!(--format <FORMAT> "Package format")
+                        .value_parser(["altsound", "gsound"])
+                        .default_value("gsound"),
+                )
+                .arg(
+                    arg!(--"target-db" <DB> "Average loudness to raise the pack to, in dBFS")
+                        .value_parser(clap::value_parser!(f64))
+                        .allow_negative_numbers(true)
+                        .default_value("-19"),
+                )
+                .arg(arg!(--"no-normalize" "Leave the pack's level as it is")),
+        )
 }
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -188,6 +281,24 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         Some(("unscramble", sub_args)) => {
             let path = sub_args.get_one::<PathBuf>("PATH").unwrap();
             process_soundpack(path, false)?;
+        }
+        Some(("list", sub_args)) => {
+            let path = sub_args.get_one::<PathBuf>("PATH").unwrap();
+            list_soundpack(path)?;
+        }
+        Some(("convert", sub_args)) => {
+            let path = sub_args.get_one::<PathBuf>("PATH").unwrap();
+            let out = sub_args.get_one::<PathBuf>("OUT").unwrap();
+            let format = match sub_args.get_one::<String>("format").unwrap().as_str() {
+                "altsound" => Format::AltSound,
+                _ => Format::GSound,
+            };
+            let target_db = if sub_args.get_flag("no-normalize") {
+                None
+            } else {
+                sub_args.get_one::<f64>("target-db").copied()
+            };
+            convert_soundpack(path, out, &Options { format, target_db })?;
         }
         _ => unreachable!(),
     }
