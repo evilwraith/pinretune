@@ -26,6 +26,39 @@ Unique identifire of this sound pack. Seems to be a 16 character string.
 ### record_enable
 If recording is enabled on the Pinsound card.
 
+### gain
+Gain of a sound group, linear, 10 = unity. Multiplies each sound's own gain; the
+result is capped at full scale. Seen in 2018-era packs.
+```
+gain <kind> <level>
+example: gain voice 14
+```
+Inside a sound folder's own configuration file `gain <level>` sets that sound's gain
+(replacing its `gain.txt`), and `delay <ms>` its start delay.
+
+### ducking
+Percentage of music and single volume kept while a sound of `kind` plays. Only
+jingle, sfx and voice duck. Defaults: jingle 5, sfx 90, voice 85.
+```
+ducking <kind> <level>
+example: ducking voice 60
+```
+
+### max
+Maximum number of sounds of `kind` playing at once (sfx 3 and voice 2 by default;
+music, jingle and single always play one at a time).
+```
+max <kind> <count>
+example: max sfx 3
+```
+
+### roms
+ROM names the sound pack is meant for. Also written `rom`.
+```
+roms <name> ...
+example: roms bop_l8 bop_l7 bop_l6
+```
+
 ### Shaker presets
 Receiving sound command `id`, will initiate shaker preset `preset`.
 ```

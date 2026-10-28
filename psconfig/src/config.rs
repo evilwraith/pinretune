@@ -18,7 +18,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-/// Sound category kind used by `max` and `ducking` statements.
+/// Sound category kind used by `max`, `ducking` and `gain` statements.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Kind {
     Jingle,
@@ -123,8 +123,21 @@ pub enum Statement {
     MaxConcurrent { kind: Kind, count: u32 },
     /// Creation timestamp (Unix epoch): `timestamp <epoch>`
     Timestamp(u32),
-    /// Audio ducking level per category: `ducking <kind> <level>`
+    /// Audio ducking level per category: `ducking <kind> <level>`.
+    /// The percentage of music/single volume kept while a sound of `kind` plays.
     Ducking { kind: Kind, level: u32 },
+    /// Gain per category: `gain <kind> <level>`. Linear, 10 = unity; multiplies
+    /// each sound's own gain.
+    Gain { kind: Kind, level: u32 },
+    /// Gain of a single sound, in that sound's own config file: `gain <level>`.
+    /// Linear, 10 = unity; replaces the sound's `gain.txt`.
+    SoundGain(u32),
+    /// Start delay of a single sound in milliseconds, in that sound's own config
+    /// file: `delay <ms>`.
+    SoundDelay(u32),
+    /// ROM names the sound pack is meant for: `roms <name> [<name> ...]`
+    /// (also written `rom`).
+    Roms(Vec<String>),
     /// Sound pack identifier (hex string): `pspack_id <hex>`
     PackId(String),
     /// Recording enabled flag: `record_enabled <0|1>`
@@ -148,6 +161,10 @@ impl fmt::Display for Statement {
             Statement::MaxConcurrent { kind, count } => write!(f, "max {kind} {count}"),
             Statement::Timestamp(v) => write!(f, "timestamp {v}"),
             Statement::Ducking { kind, level } => write!(f, "ducking {kind} {level}"),
+            Statement::Gain { kind, level } => write!(f, "gain {kind} {level}"),
+            Statement::SoundGain(v) => write!(f, "gain {v}"),
+            Statement::SoundDelay(v) => write!(f, "delay {v}"),
+            Statement::Roms(v) => write!(f, "roms {}", v.join(" ")),
             Statement::PackId(v) => write!(f, "pspack_id {v}"),
             Statement::RecordEnabled(v) => write!(f, "record_enabled {v}"),
             Statement::Rtttl(v) => write!(f, "rtttl {v}"),
@@ -201,6 +218,54 @@ impl PsConfig {
     pub fn pack_id(&self) -> Option<&str> {
         self.statements.iter().find_map(|s| match s {
             Statement::PackId(v) => Some(v.as_str()),
+            _ => None,
+        })
+    }
+
+    /// Get the ducking level for a sound category, if set.
+    pub fn ducking(&self, kind: &Kind) -> Option<u32> {
+        self.statements.iter().rev().find_map(|s| match s {
+            Statement::Ducking { kind: k, level } if k == kind => Some(*level),
+            _ => None,
+        })
+    }
+
+    /// Get the gain for a sound category, if set.
+    pub fn gain(&self, kind: &Kind) -> Option<u32> {
+        self.statements.iter().rev().find_map(|s| match s {
+            Statement::Gain { kind: k, level } if k == kind => Some(*level),
+            _ => None,
+        })
+    }
+
+    /// Get the maximum number of concurrent sounds for a category, if set.
+    pub fn max_concurrent(&self, kind: &Kind) -> Option<u32> {
+        self.statements.iter().rev().find_map(|s| match s {
+            Statement::MaxConcurrent { kind: k, count } if k == kind => Some(*count),
+            _ => None,
+        })
+    }
+
+    /// Get the gain of a single sound (from that sound's own config file).
+    pub fn sound_gain(&self) -> Option<u32> {
+        self.statements.iter().rev().find_map(|s| match s {
+            Statement::SoundGain(v) => Some(*v),
+            _ => None,
+        })
+    }
+
+    /// Get the start delay of a single sound (from that sound's own config file).
+    pub fn sound_delay(&self) -> Option<u32> {
+        self.statements.iter().rev().find_map(|s| match s {
+            Statement::SoundDelay(v) => Some(*v),
+            _ => None,
+        })
+    }
+
+    /// Get the ROM names the sound pack is meant for.
+    pub fn roms(&self) -> Option<&[String]> {
+        self.statements.iter().find_map(|s| match s {
+            Statement::Roms(v) => Some(v.as_slice()),
             _ => None,
         })
     }

@@ -27,7 +27,8 @@ pub fn parse(input: &str) -> Result<PsConfig, ParseError> {
     let mut config = PsConfig::new();
 
     for segment in input.split('|') {
-        let segment = segment.trim();
+        // Files end in a NUL like a C string
+        let segment = segment.trim_matches(|c: char| c.is_whitespace() || c == '\0');
         if segment.is_empty() {
             continue;
         }
@@ -68,6 +69,14 @@ fn parse_statement(input: &str) -> Result<Statement, ParseError> {
         "ducking" => {
             parse_kind_u32("ducking", rest).map(|(kind, level)| Statement::Ducking { kind, level })
         }
+        // `gain <kind> <n>` in a pack config, `gain <n>` in a sound's own config
+        "gain" => match split_first_token(rest) {
+            (_, "") => parse_u32("gain", rest).map(Statement::SoundGain),
+            _ => parse_kind_u32("gain", rest).map(|(kind, level)| Statement::Gain { kind, level }),
+        },
+        "delay" => parse_u32("delay", rest).map(Statement::SoundDelay),
+        "roms" | "rom" => require_value("roms", rest)
+            .map(|v| Statement::Roms(v.split_whitespace().map(String::from).collect())),
         "rtttl" => require_value("rtttl", rest).map(|v| Statement::Rtttl(v.to_string())),
         _ => Ok(Statement::Unknown(input.to_string())),
     }
@@ -268,5 +277,33 @@ mod tests {
             Statement::Unknown("checksum".to_string())
         );
         assert!(config.checksum().is_none());
+    }
+
+    /// Config of a 2018 sound pack (Bride of Pin-bot), as decrypted, NUL included.
+    const PACK_2018: &str = "checksum SheIsAlive|roms bop_l8 bop_l7 bop_l6 |gain music 9|\
+        gain sfx 10|gain voice 14|gain jingle 10|gain single 10|ducking voice 60|\0";
+
+    #[test]
+    fn parse_pack_2018() {
+        let config = parse(PACK_2018).unwrap();
+        assert_eq!(config.checksum(), Some("SheIsAlive"));
+        assert_eq!(
+            config.roms(),
+            Some(["bop_l8", "bop_l7", "bop_l6"].map(String::from).as_slice())
+        );
+        assert_eq!(config.gain(&Kind::Music), Some(9));
+        assert_eq!(config.gain(&Kind::Voice), Some(14));
+        assert_eq!(config.ducking(&Kind::Voice), Some(60));
+        assert_eq!(config.ducking(&Kind::Sfx), None);
+        // the trailing NUL is not a statement
+        assert_eq!(config.statements().len(), 8);
+    }
+
+    #[test]
+    fn parse_sound_config() {
+        let config = parse("gain 12|delay 400|").unwrap();
+        assert_eq!(config.sound_gain(), Some(12));
+        assert_eq!(config.sound_delay(), Some(400));
+        assert_eq!(config.to_config_string(), "gain 12|delay 400|");
     }
 }
