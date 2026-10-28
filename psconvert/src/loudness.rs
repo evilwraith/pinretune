@@ -12,12 +12,28 @@
 
 use std::path::Path;
 
-/// Mean volume of a WAV file in dBFS, or `None` if it cannot be read
-/// (not a WAV file, unsupported sample format, or silent).
+/// Mean volume of a WAV or Ogg Vorbis file in dBFS, or `None` if it cannot be
+/// read (another format, unsupported sample format, or silent).
 pub fn mean_volume_db(path: &Path) -> Option<f64> {
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())?
+        .to_ascii_lowercase();
+    let (sum, count) = match ext.as_str() {
+        "wav" => wav_sum_squares(path)?,
+        "ogg" => ogg_sum_squares(path)?,
+        _ => return None,
+    };
+    if count == 0 || sum == 0.0 {
+        return None;
+    }
+    Some(10.0 * (sum / count as f64).log10())
+}
+
+fn wav_sum_squares(path: &Path) -> Option<(f64, u64)> {
     let mut reader = hound::WavReader::open(path).ok()?;
     let spec = reader.spec();
-    let (sum, count) = match spec.sample_format {
+    match spec.sample_format {
         hound::SampleFormat::Float => {
             sum_squares(reader.samples::<f32>().map(|s| s.map(f64::from)))
         }
@@ -29,11 +45,24 @@ pub fn mean_volume_db(path: &Path) -> Option<f64> {
                     .map(|s| s.map(|v| v as f64 / full_scale)),
             )
         }
-    }?;
-    if count == 0 || sum == 0.0 {
-        return None;
     }
-    Some(10.0 * (sum / count as f64).log10())
+}
+
+/// Ogg Vorbis decoded to 16 bit, as ffmpeg's `volumedetect` measures it.
+fn ogg_sum_squares(path: &Path) -> Option<(f64, u64)> {
+    let file = std::fs::File::open(path).ok()?;
+    let mut reader =
+        lewton::inside_ogg::OggStreamReader::new(std::io::BufReader::new(file)).ok()?;
+    let mut sum = 0.0;
+    let mut count = 0u64;
+    while let Some(packet) = reader.read_dec_packet_itl().ok()? {
+        for s in packet {
+            let v = s as f64 / 32768.0;
+            sum += v * v;
+            count += 1;
+        }
+    }
+    Some((sum, count))
 }
 
 fn sum_squares<E>(samples: impl Iterator<Item = Result<f64, E>>) -> Option<(f64, u64)> {

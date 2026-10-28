@@ -7,3 +7,4 @@ edition = "2024"
 psaperio = { path = "../psaperio" }
 psconfig = { path = "../psconfig" }
 hound = "3"
+lewton = "0.10"
