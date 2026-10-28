@@ -113,6 +113,14 @@ pub fn convert(
     let mut copies = Vec::new();
     let mut commands = std::collections::BTreeSet::new();
     for sound in &pack.sounds {
+        // Command 0 is stop-all on every sound board; PinSound never plays a sound for it
+        if sound.command == 0 {
+            report.not_converted.push(format!(
+                "{}/{}: command 0 is stop-all, never played",
+                sound.kind, sound.folder
+            ));
+            continue;
+        }
         if let Some(ms) = sound.delay {
             report
                 .not_converted
